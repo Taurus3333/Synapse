@@ -29,7 +29,7 @@ _SYNTH_KEYS = frozenset(
     {"atlas", "harbor", "quay", "beacon", "northwind", "globex", "initech"}
 )
 
-_USER_AGENT = "SynapsePortfolioAgent/1.0 (+https://github.com/synapse-local; demo)"
+_USER_AGENT = "Synapse/1.0 (+local demo)"
 _HTTP_RETRY = RetryPolicy(attempts=3, base_delay_s=0.2, max_delay_s=2.0)
 
 

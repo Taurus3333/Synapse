@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 
 class RedisClient:
-    """Redis client for cache, counters, and locks. Never the source of truth."""
+    """Redis client used for health checks today (ping). Not application truth."""
 
     def __init__(self, url: str) -> None:
         self._url = url

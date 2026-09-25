@@ -2,8 +2,8 @@ from datetime import datetime
 
 from synapse.data.clock import Q2_2026_END, Q2_2026_START
 from synapse.domain.dataset import Dataset
-from synapse.domain.enums import BlockerStatus, RiskStatus, TaskStatus
-from synapse.domain.models import ActivityEvent, Blocker, Project, Risk, Task
+from synapse.domain.enums import BlockerStatus, TaskStatus
+from synapse.domain.models import Blocker, Project, Task
 
 
 def project_named(dataset: Dataset, tenant_slug: str, key: str) -> Project:
@@ -45,33 +45,4 @@ def open_blockers(dataset: Dataset, project_id: str) -> list[Blocker]:
         blocker
         for blocker in dataset.blockers
         if blocker.project_id == project_id and blocker.status == BlockerStatus.OPEN
-    ]
-
-
-def open_risks(dataset: Dataset, project_id: str) -> list[Risk]:
-    return [
-        risk
-        for risk in dataset.risks
-        if risk.project_id == project_id and risk.status in {RiskStatus.OPEN, RiskStatus.MITIGATING}
-    ]
-
-
-def activity_in_window(
-    dataset: Dataset,
-    project_id: str,
-    window_start: datetime,
-    window_end: datetime,
-) -> list[ActivityEvent]:
-    return [
-        event
-        for event in dataset.activities
-        if event.project_id == project_id and window_start <= event.occurred_at < window_end
-    ]
-
-
-def stale_documents(dataset: Dataset, project_id: str) -> list[str]:
-    return [
-        document.id
-        for document in dataset.documents
-        if document.project_id == project_id and document.contradicts_live_status
     ]

@@ -27,7 +27,6 @@ synapse/
   platform/     config, db, redis, schema, seed, logging
   data/         synthetic corpus generator
   domain/       shared models/enums
-  # worker/     reserved — unused (ask is sync; no SQS consumer yet)
 infra/terraform AWS: VPC, ALB, ECS, RDS, Redis, ECR, Secrets, IAM
 scripts/deploy  apply → ecr_push → rollout → bootstrap
 docs/           demo_results.json · perf_results.json · e2e_results.json  (measured only)
