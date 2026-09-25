@@ -16,6 +16,10 @@ htmlcov/
 .vscode/
 data/generated/
 
+# Personal notes — keep out of the public repo
+RESUME.md
+PROBES.md
+
 # Terraform
 **/.terraform/
 *.tfstate

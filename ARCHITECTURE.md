@@ -1,7 +1,7 @@
 # Synapse — Architecture
 
-Engineering guide: **flow → steps → why → example → failure → pitfall**.  
-Describes the **system as built** after chunks 0–22. Deferred pieces are listed in §17 — do not pitch them as shipping.
+Engineering guide: **flow → steps → why → example → failure → common mistake**.  
+Describes the **system as built** after chunks 0–22. Deferred pieces are listed in §17 — do not claim them as shipping.
 
 **How to learn end-to-end:** §1 ask flow → §2 LangGraph → §3 tools → §4–6 data/memory → §7 security → §8–11 quality loops → §12–16 ops → §18 design checklist.
 
@@ -70,35 +70,35 @@ POST /v1/ask {question, project_key: ATLAS}
 **Why:** A client-supplied `X-Tenant-ID` is spoofable.  
 **Example:** Northwind token cannot read Globex rows.  
 **Fails:** Missing/bad token → 401; spoofed header ≠ tid → 403.  
-**Design Q:** *“Why JWT if you already filter SQL?”* — AuthN proves identity; SQL filter enforces it. You need both.
+**Why:** *“Why JWT if you already filter SQL?”* — AuthN proves identity; SQL filter enforces it. You need both.
 
 **Step ①b — What happens:** `check_user_question` hard-blocks jailbreak / secret-exfil / cross-tenant / tool-abuse / role-play escapes — including de-obfuscated views (base64, leet, character-space, flip, alnum-flat signatures). Soft flags remain for weaker educational framing.  
 **Why:** Retrieved-doc injection is handled by DATA framing; *user* jailbreaks are a different channel — stop them at the door before token spend.  
 **Fails:** Hard hits → HTTP 400 `guardrail_blocked` (no STM run burn).  
-**Design Q:** *“Isn’t that just a regex toy?”* — It’s a **policy gate + de-obfuscation**, not an LLM moderator. Chunk 15 red-teams it with PyRIT converters; failures become new signatures. Honest about the limit: novel phrasing can still slip — grounding/framing/tenant SQL are the backstops.
+**Why:** *“Isn’t that just a regex toy?”* — It’s a **policy gate + de-obfuscation**, not an LLM moderator. Chunk 15 red-teams it with PyRIT converters; failures become new signatures. Honest about the limit: novel phrasing can still slip — grounding/framing/tenant SQL are the backstops.
 
 **Step ② — What happens:** Load project by `(tenant_id, key)`; check membership unless admin/lead.  
 **Why:** AuthN ≠ AuthZ. Same tenant can still lack project access.  
 **Example:** Viewer may read; cannot POST risks.  
 **Fails:** Unknown/cross-tenant key → **404** (no existence leak).  
-**Design Q:** *“Why 404 not 403 for cross-tenant?”* — Avoids confirming the project exists elsewhere.
+**Why:** *“Why 404 not 403 for cross-tenant?”* — Avoids confirming the project exists elsewhere.
 
 **Step ③ — What happens:** Insert `agent_runs` row; later append checkpoints.  
 **Why:** Durable execution audit beats “whatever was in memory when the process died.”  
 **Example:** After ask, `GET /v1/runs/{id}/checkpoints` shows plan→gather→follow→probe→evidence→done.  
-**Design Q:** *“Why Postgres for STM instead of Redis?”* — STM must survive restarts and be queryable; Redis is volatile. Redis in Synapse is **health only** today (fast KV + TTL is the right *primitive* for cache/rate-limits later — wrong for run truth).
+**Why:** *“Why Postgres for STM instead of Redis?”* — STM must survive restarts and be queryable; Redis is volatile. Redis in Synapse is **health only** today (fast KV + TTL is the right *primitive* for cache/rate-limits later — wrong for run truth).
 
 **Step ④ — What happens:** Bounded graph runs tools + LLM (see §2). Follow hops are **code-owned**.  
 **Why:** Outer workflow is known; only residual probe branches.  
 **Not here:** Queue → worker. Ask is **synchronous** today — including the Streamlit chat (each bubble is one sync `/v1/ask`).  
 **Also:** `POST /v1/multihop` runs gather→follow→pack with **no LLM** for integration smoke.  
-**Design Q:** *“Why not async/SQS?”* — Correct at scale (accept fast, work in background, DLQ poison). We deferred it; claiming async without a queue would be dishonest.
-**Design Q:** *“Is the UI a chatbot or Q&A?”* — Chat-shaped **delivery Q&A**. Each user message starts a fresh bounded agent run for a project; history in the UI is a transcript, not an unbound multi-turn brain dump into one prompt.
+**Why:** *“Why not async/SQS?”* — Correct at scale (accept fast, work in background, DLQ poison). We deferred it; claiming async without a queue would be dishonest.
+**Why:** *“Is the UI a chatbot or Q&A?”* — Chat-shaped **delivery Q&A**. Each user message starts a fresh bounded agent run for a project; history in the UI is a transcript, not an unbound multi-turn brain dump into one prompt.
 
 **Step ⑤ — What happens:** Model proposes citations; code keeps only ids present in the EvidencePack.  
 **Why:** Soft “please cite” prompts fail; closed-world validation does not.  
 **Example:** Fake `rsk_FAKE` → `rejected_citations`.  
-**Design Q:** *“Why validate after the LLM?”* — LLMs are generators; authority stays in code.
+**Why:** *“Why validate after the LLM?”* — LLMs are generators; authority stays in code.
 
 **Step ⑥–⑦ — What happens:** Persist answer on the run; optionally write LTM summary; return JSON.  
 **Why:** Next ask can `memory_search`; never treat that summary as live status.  
@@ -160,31 +160,31 @@ Common pattern names map to **what Synapse actually does** — claim only what t
 **Requirement → Problem → Primitive → Choice (orchestration):**  
 Need answers that gather evidence across systems → free LLM wandering burns cost and invents steps → primitive = **state machine + tools** → choice = LangGraph with code-owned gather/follow and bounded probe → trade-off = less “autonomous magic,” more auditable demos.
 
-**Design Q:** *“Do you use Chain-of-Thought?”* — We don’t market CoT as a feature. Intermediate structure is the **checklist, hops, and tool trail**. If the model narrates privately inside a token, that is not our audit surface — **STM checkpoints are**.  
-**Design Q:** *“Is this an agent or a workflow?”* — Both: **workflow outside, agent inside the probe budget.**  
-**Design Q:** *“Why not pure ReAct?”* — ReAct is a pattern; without caps, fingerprints, and code-first hops it becomes an unbounded bill and an undrawable story.
+**Why:** *“Do you use Chain-of-Thought?”* — We don’t market CoT as a feature. Intermediate structure is the **checklist, hops, and tool trail**. If the model narrates privately inside a token, that is not our audit surface — **STM checkpoints are**.  
+**Why:** *“Is this an agent or a workflow?”* — Both: **workflow outside, agent inside the probe budget.**  
+**Why:** *“Why not pure ReAct?”* — ReAct is a pattern; without caps, fingerprints, and code-first hops it becomes an unbounded bill and an undrawable story.
 
 **Plan — What:** JSON slots from a fixed vocabulary (includes `cross_source_follow`).  
 **Why:** Forces a structured checklist instead of free-form wandering — you cannot bound spend or explain hops inside one giant prompt.  
-**Design Q:** *“Why not one giant prompt?”* — No checklist, no hop audit, no place to put a cap.
+**Why:** *“Why not one giant prompt?”* — No checklist, no hop audit, no place to put a cap.
 
 **Gather — What:** Deterministic first hops into live tables (same tools every time).  
 **Why:** Live truth must not depend on the model “remembering” `risk_list`. This is also where **determinism** starts: control plane in code, not in prose.  
 **Example:** ATLAS `at_risk` + open vendor blocker always enter the pack before docs.  
-**Design Q:** *“How is an agent deterministic?”* — Separate control plane (graph, gather, follow, budgets, fingerprints) from generation (LLM prose). Two runs on the same DB should tell the same delivery *story*; wording may vary.
+**Why:** *“How is an agent deterministic?”* — Separate control plane (graph, gather, follow, budgets, fingerprints) from generation (LLM prose). Two runs on the same DB should tell the same delivery *story*; wording may vary.
 
 **Follow — What:** `plan_follow_hops` reads gather results; open risks/blockers (or at-risk/delayed) queue docs/email/meetings/memory + public GH/HN/SO/Wikipedia; else baseline doc+memory from the question.  
 **Why (Requirement→Problem→Primitive→Choice):** Multi-hop must connect live risks to narrative. LLM-chosen first hops are opaque and flaky → deterministic planner over tool results → code owns the *first* wave; LLM owns *residuals*.  
 **Trade-off:** Less “fully autonomous”; far more auditable (`hops[].reason`, `source_ids`).  
 **Example:** ATLAS “Vendor SDK…” → Harbor SDK email + Q2 retro meeting before synthesise.  
-**Design Q:** *“Who decides the next hop?”* — Code for the first wave from live evidence; the model only if checklist slots remain empty.  
-**Pitfall:** Calling “multi-hop” when the model free-form loops with no live→narrative contract.
+**Why:** *“Who decides the next hop?”* — Code for the first wave from live evidence; the model only if checklist slots remain empty.  
+**Common mistake:** Calling “multi-hop” when the model free-form loops with no live→narrative contract.
 
 **Probe — What:** Up to N LLM-chosen tool calls (`max_probe_steps`, default **3** — tightened in Chunk 17 from 6 after measuring ATLAS Q2 avg ≈ 1 probe); duplicate tool+args fingerprints refused; chat at **temperature 0** for stabler JSON.  
 **Why:** Agency only where the next hop depends on prior evidence *and* follow left a gap.  
 **Trade-off:** Less autonomous than free ReAct; drawable, budgetable, checkpointable.  
-**Design Q:** *“Why LangGraph instead of a while-loop / free ReAct?”* — Explicit nodes/edges are a state machine you can draw, budget, and STM-phase. A while-loop works until you must explain cost and failure clearly.  
-**Design Q:** *“Why temperature 0?”* — Delivery status is not creative writing; stable tool JSON and calmer demos.
+**Why:** *“Why LangGraph instead of a while-loop / free ReAct?”* — Explicit nodes/edges are a state machine you can draw, budget, and STM-phase. A while-loop works until you must explain cost and failure clearly.  
+**Why:** *“Why temperature 0?”* — Delivery status is not creative writing; stable tool JSON and calmer demos.
 
 ### Budgets: cost control vs finishing the job
 
@@ -205,11 +205,11 @@ Hard ceiling          max_tool_calls (default 28)
 | gaps / conflicts in JSON | Honest partial > fake complete or infinite retry |
 | Fingerprints | Same tool+args twice refused — stops cost burn |
 
-**Design Q:** *“Won’t a cap mean you fail just before success?”* — Possible for residual probe hops; that’s why must-have hops are code-front-loaded and **finish** still runs. Optimize for “core truth within budget,” not “LLM may wander forever.”  
-**Design Q:** *“Why not raise the cap until perfect?”* — Perfect is undefined for open retrieval. Caps are a product spend limit; quality comes from better first hops.  
-**Design Q:** *“How do you know you’re done?”* — Checklist filled/partial + synthesise from the pack. Done = state-machine exit, not a vibe.  
-**Design Q:** *“Why return gaps instead of retrying forever?”* — Gaps are a product signal (“no meetings found”); endless retry is a cost signal wearing a quality costume.  
-**Pitfall:** “Runs until the objective is achieved” with no coded stop = unbounded bill. Cap with no front-loaded gather = coin-flip demo.
+**Why:** *“Won’t a cap mean you fail just before success?”* — Possible for residual probe hops; that’s why must-have hops are code-front-loaded and **finish** still runs. Optimize for “core truth within budget,” not “LLM may wander forever.”  
+**Why:** *“Why not raise the cap until perfect?”* — Perfect is undefined for open retrieval. Caps are a product spend limit; quality comes from better first hops.  
+**Why:** *“How do you know you’re done?”* — Checklist filled/partial + synthesise from the pack. Done = state-machine exit, not a vibe.  
+**Why:** *“Why return gaps instead of retrying forever?”* — Gaps are a product signal (“no meetings found”); endless retry is a cost signal wearing a quality costume.  
+**Common mistake:** “Runs until the objective is achieved” with no coded stop = unbounded bill. Cap with no front-loaded gather = coin-flip demo.
 
 **Finish — What:** Code fills remaining empty slots best-effort; skips what follow already covered.  
 **Evidence / synthesise — What:** Assemble pack with precedence; model must return JSON; **`parse_synthesis`** (Pydantic) validates or falls back; **`ground_citations`** drops ids not in the pack; soft output flags (secret-shaped text) become gaps. Plan/probe use the same pattern — **`parse_plan` / `parse_probe`** allowlist slots and tools so unknown probe tools never run.  
@@ -231,9 +231,9 @@ Model proposes answer + citation ids
 | hops + tool_trail + STM | Auditable why a hop ran |
 | gaps | Thin evidence visible, not papered over |
 
-**Design Q:** *“How do you trust an LLM answer?”* — I don’t. I trust tools + pack + grounding + audit trail. The model is a writer in a cage.  
-**Design Q:** *“What if it ignores the pack?”* — Citations fail grounding; gaps/conflicts expose thin evidence. Golden eval (Chunk 14) regresses pack ids + live status without an LLM judge.  
-**Design Q:** *“Why not multi-agent?”* — One user question, one objective. Extra agents need a second goal or handoff; else coordination is free complexity.
+**Why:** *“How do you trust an LLM answer?”* — I don’t. I trust tools + pack + grounding + audit trail. The model is a writer in a cage.  
+**Why:** *“What if it ignores the pack?”* — Citations fail grounding; gaps/conflicts expose thin evidence. Golden eval (Chunk 14) regresses pack ids + live status without an LLM judge.  
+**Why:** *“Why not multi-agent?”* — One user question, one objective. Extra agents need a second goal or handoff; else coordination is free complexity.
 
 ---
 
@@ -275,9 +275,9 @@ typed result → EvidencePack item (framed as DATA if text)
 **Ops:** `GET /v1/connectors` → `live_db` + `public_external` + `optional_private`; `GET /v1/connectors/ready` probes them.  
 **Example:** `risk_list({project_key:"ATLAS"})` — tenant from principal, not args.  
 **Fails:** Bad args → tool error; network blip → gap; personal tokens optional.  
-**Design Q:** *“Why MCP instead of direct DB access?”* — MCP is an **interface**. Security is principal binding + SQL filters.  
-**Design Q:** *“Why tools never take `tenant_id`?”* — Anything the model can type can be spoofed. Tenant comes from the JWT principal bound into `ToolSession`.  
-**Design Q:** *“How do you show live externals without my Gmail?”* — Public GitHub (k8s) + HN + Stack Overflow + Wikipedia by default.
+**Why:** *“Why MCP instead of direct DB access?”* — MCP is an **interface**. Security is principal binding + SQL filters.  
+**Why:** *“Why tools never take `tenant_id`?”* — Anything the model can type can be spoofed. Tenant comes from the JWT principal bound into `ToolSession`.  
+**Why:** *“How do you show live externals without my Gmail?”* — Public GitHub (k8s) + HN + Stack Overflow + Wikipedia by default.
 
 **Engineering principle:** Treat the model as an untrusted planner; treat tools as the trusted executor.
 
@@ -333,21 +333,21 @@ typed result → EvidencePack item (framed as DATA if text)
 | **Choice** | **Live connectors = SQL.** **RAG = documents only**, ingested when docs change. Ask cost = tool SQL + one query embedding + ANN. |
 | **Trade-off** | Docs can lag live status (we surface **conflicts**). Worth it: status correct without embed cost per mutation. |
 
-### Design Q&A (same weight as Redis)
+### Live vs RAG Q&A (same weight as Redis)
 
-**Design Q:** *“Do you reindex RAG whenever the database changes?”*  
+**Why:** *“Do you reindex RAG whenever the database changes?”*  
 **Answer:** No. Status/risks/blockers are **live SQL**, not vectors. RAG is for **document narrative**. Re-ingest when a *document* changes (`synapse-ingest`), not on every ask or every PATCH.
 
-**Design Q:** *“Then how is this Agentic RAG on a dynamic database?”*  
+**Why:** *“Then how is this Agentic RAG on a dynamic database?”*  
 **Answer:** The agent **tools** into a dynamic DB (gather/follow). RAG is one tool among many. Dynamics live in Postgres rows; vectors are a **derived index over docs**.
 
-**Design Q:** *“Why not embed project status?”*  
+**Why:** *“Why not embed project status?”*  
 **Answer:** Status must be authoritative after a write. Vectors are approximate and lag. Embedding status is the Redis-class mistake: wrong primitive for the job.
 
-**Design Q:** *“Why is Redis health-only here?”*  
+**Why:** *“Why is Redis health-only here?”*  
 **Answer:** Same pattern: Redis is great for TTL cache / rate-limits; **wrong** for run truth (STM) and **wrong** as source of delivery status. Postgres owns truth.
 
-**Pitfall:** “We re-embed the knowledge base every request so it’s always fresh” — expensive, slow, and still loses transactional writes. Freshness for ledger facts = **read the row**.
+**Common mistake:** “We re-embed the knowledge base every request so it’s always fresh” — expensive, slow, and still loses transactional writes. Freshness for ledger facts = **read the row**.
 
 ---
 
@@ -379,12 +379,12 @@ EvidencePack (precedence 10) → synthesise → ground citations
 **Why pgvector in Postgres:** One operational database; joins/filters with live rows; no second SaaS as truth.  
 **Trade-off:** Embed cost/latency; mitigated by hashing.  
 **When to re-ingest:** Document create/update (CLI `synapse-ingest` today) — **not** on ask, **not** on live status PATCH.  
-**Design Q:** *“Why RAG if we have live data?”* — Live tables answer status/counts; docs answer *narrative* (“what was said in the retro”). Different job.
+**Why:** *“Why RAG if we have live data?”* — Live tables answer status/counts; docs answer *narrative* (“what was said in the retro”). Different job.
 
 **Retrieve — Why filter in SQL:** Vector similarity alone does not know tenancy.  
 **Why frame as DATA:** Retrieved text may contain injection (“ignore instructions…”). Framing + never executing it as control.  
 **Example:** Stale ATLAS status doc says “on track” while live is `at_risk` → **conflict**; live wins.  
-**Design Q:** *“Why not fine-tune on tickets?”* — Fine-tunes go stale, cost more, and still need live reads for mutations.
+**Why:** *“Why not fine-tune on tickets?”* — Fine-tunes go stale, cost more, and still need live reads for mutations.
 
 **Vector DB is not source of truth.** Approximate recall only.
 
@@ -411,7 +411,7 @@ LTM memory_entries
 **LTM — Why bottom:** Helpful recall; **never** overrides live status.  
 **STM — Different axis:** Not “knowledge,” but **this run’s** checkpoints (execution state).
 
-**Design Q:** *“Why STM and LTM instead of saving the chat?”* — Chat logs mix tool noise with facts; STM is auditable phases; LTM is curated durable notes with lifecycle.
+**Why:** *“Why STM and LTM instead of saving the chat?”* — Chat logs mix tool noise with facts; STM is auditable phases; LTM is curated durable notes with lifecycle.
 
 **Example (Atlas):** Live `at_risk` + open SDK blocker beat a Q1 PDF that still says green — conflict named in the answer.
 
@@ -429,7 +429,7 @@ Request → Bearer required
 
 **Why both AuthN and AuthZ:** Knowing *who* ≠ knowing *what they may do*.  
 **Why filter in the data-access layer:** UI checks are skippable; SQL is not.  
-**Design Q:** *“Where does identity come from?”* — Token/principal. Never from the model.
+**Why:** *“Where does identity come from?”* — Token/principal. Never from the model.
 
 ---
 
@@ -452,9 +452,9 @@ External GET / LLM / embed
 **Retries — Why only some errors:** Retrying a 401 burns quota and hides bugs. Retrying a 503 often succeeds.  
 **Idempotency — Why fingerprints:** Same tool+args twice in one run is almost always a loop; refuse instead of double-billing.  
 **DLQ-lite — Why not SQS yet:** Ask is still **synchronous**. Failed runs in Postgres *are* the poison queue until we add accept→worker. Claiming SQS without a queue would be dishonest.  
-**Design Q:** *“Why timeout here?”* — One hung GitHub call must not freeze the whole ask.  
-**Design Q:** *“Retry vs fail-fast?”* — Retry transient idempotent reads; fail-fast on auth and bad args.  
-**Design Q:** *“Where is the DLQ?”* — `GET /v1/runs/failed` today; real SQS/DLQ when Chunk 18–20 (or async ask) lands.
+**Why:** *“Why timeout here?”* — One hung GitHub call must not freeze the whole ask.  
+**Why:** *“Retry vs fail-fast?”* — Retry transient idempotent reads; fail-fast on auth and bad args.  
+**Why:** *“Where is the DLQ?”* — `GET /v1/runs/failed` today; real SQS/DLQ when Chunk 18–20 (or async ask) lands.
 
 ---
 
@@ -489,8 +489,8 @@ SuiteReport: pass_rate = cases_passed / n   (only measured aggregate)
 **Choice:** Gate on **multihop pack** first (deterministic). Answer scoring is fixture/ask-optional — same checks, still no judge model.  
 **Trade-off:** Does not score prose elegance; that is intentional. Adversarial input is Chunk 15 (`synapse-redteam`), not retrieval regression.
 
-**Design Q:** *“What’s your eval score?”* — Suite **pass rate** on golden cases (today 2/2 when DB seeded). Not BLEU, not GPT-judge.  
-**Design Q:** *“Why not judge with another LLM?”* — Circular and non-reproducible. Seed ids either land in the pack or they don’t.
+**Why:** *“What’s your eval score?”* — Suite **pass rate** on golden cases (today 2/2 when DB seeded). Not BLEU, not GPT-judge.  
+**Why:** *“Why not judge with another LLM?”* — Circular and non-reproducible. Seed ids either land in the pack or they don’t.
 
 ---
 
@@ -518,8 +518,8 @@ synapse-redteam → RedTeamReport.pass_rate   (only measured aggregate)
 **Choice:** Gate CI on defense hold-rate — not on “model refused nicely.” Planted ATLAS injection document + comment exist in seed-42 for framing tests.  
 **Trade-off:** We use PyRIT converters (optional extra `.[redteam]`), not full multi-turn Crescendo against live Groq in CI — that would be flaky/costly. Live ask adversarial runs are the next hardening loop, not a fake score.
 
-**Design Q:** *“Did you red-team or just unit-test regex?”* — Both: PyRIT mutations + HTTP ask block + framing + grounding + cross-tenant 404.  
-**Design Q:** *“What if injection is in a retrieved doc?”* — User channel ≠ data channel. Docs are DATA-framed; synthesise + grounding still can’t mint foreign ids.
+**Why:** *“Did you red-team or just unit-test regex?”* — Both: PyRIT mutations + HTTP ask block + framing + grounding + cross-tenant 404.  
+**Why:** *“What if injection is in a retrieved doc?”* — User channel ≠ data channel. Docs are DATA-framed; synthesise + grounding still can’t mint foreign ids.
 
 ---
 
@@ -547,8 +547,8 @@ middleware  →  http_requests_total + http_request_duration_ms
 **Choice:** **No LangSmith.** Ship `GET /v1/metrics` and span logs. Prometheus scrape / OTel export is the honest upgrade when multi-instance AWS lands.  
 **Trade-off:** Metrics reset on process restart; fine for local/demo, not a multi-node TSDB.
 
-**Design Q:** *“Where’s LangSmith?”* — Deliberately skipped. STM checkpoints are the agent audit; metrics cover aggregates; LangSmith would be a parallel story that can disagree with Postgres.  
-**Design Q:** *“How do you debug a bad answer?”* — `correlation_id` → logs → `run_id` → STM checkpoints + hops + rejected_citations.
+**Why:** *“Where’s LangSmith?”* — Deliberately skipped. STM checkpoints are the agent audit; metrics cover aggregates; LangSmith would be a parallel story that can disagree with Postgres.  
+**Why:** *“How do you debug a bad answer?”* — `correlation_id` → logs → `run_id` → STM checkpoints + hops + rejected_citations.
 
 ---
 
@@ -581,9 +581,9 @@ synapse-perf ──▶ live /v1/ask + /v1/multihop
 
 Pricing assumptions (see report): Groq `openai/gpt-oss-20b` ~$0.10/$0.50 per MTok in/out; `text-embedding-3-small` ~$0.02 per MTok. Embed spend on ask is noise (~6 tokens/query).
 
-**Design Q:** *“What’s your p50?”* — ~24 s for full ask on this machine/corpus; ~9 s for LLM-free multihop. Not an SLA.  
-**Design Q:** *“How did you cut cost?”* — Front-loaded gather/follow so probe averages one step; then lowered the cap to 3. Token accounting proved the graph was already cheap before we touched it.  
-**Design Q:** *“Why not cache the answer?”* — Live status can PATCH between asks; answer cache would demo a lie.
+**Why:** *“What’s your p50?”* — ~24 s for full ask on this machine/corpus; ~9 s for LLM-free multihop. Not an SLA.  
+**Why:** *“How did you cut cost?”* — Front-loaded gather/follow so probe averages one step; then lowered the cap to 3. Token accounting proved the graph was already cheap before we touched it.  
+**Why:** *“Why not cache the answer?”* — Live status can PATCH between asks; answer cache would demo a lie.
 
 ---
 
@@ -648,9 +648,9 @@ NAT Gateway      private → internet (ECR pull, Groq/OpenAI)
 | X-Ray / OTel collector | Chunk 16 chose correlation + `/v1/metrics` |
 | EKS / Lambda sprawl | No second service to justify |
 
-**Design Q:** *“Why Fargate not EKS?”* — One API container. k8s is an ops product we do not need.  
-**Design Q:** *“Where’s the queue?”* — Not built. Sync ask + STM failure list until async is a real requirement.  
-**Design Q:** *“How do secrets stay out of git?”* — `TF_VAR_*` / Secrets Manager JSON; `.tfvars` gitignored.
+**Why:** *“Why Fargate not EKS?”* — One API container. k8s is an ops product we do not need.  
+**Why:** *“Where’s the queue?”* — Not built. Sync ask + STM failure list until async is a real requirement.  
+**Why:** *“How do secrets stay out of git?”* — `TF_VAR_*` / Secrets Manager JSON; `.tfvars` gitignored.
 
 ### Deploy sequence (Chunk 19)
 
@@ -699,8 +699,8 @@ workflow_dispatch deploy.yml
 **Choice:** Eval and red-team are **first-class jobs** (same CLIs as local). Deploy is `workflow_dispatch` only.  
 **Trade-off:** No continuous delivery to ECS yet — push image/plan when an operator opts in. Rollback = redeploy previous ECR tag via `rollout.ps1`.
 
-**Design Q:** *“What’s your release gate?”* — `ci-ok`: lint, tests, golden eval, red-team, audit, terraform validate, image build, **e2e**.  
-**Design Q:** *“Do PRs auto-deploy?”* — No. Billable AWS stays behind `deploy.yml` inputs + secrets.
+**Why:** *“What’s your release gate?”* — `ci-ok`: lint, tests, golden eval, red-team, audit, terraform validate, image build, **e2e**.  
+**Why:** *“Do PRs auto-deploy?”* — No. Billable AWS stays behind `deploy.yml` inputs + secrets.
 
 ---
 
@@ -726,8 +726,8 @@ synapse-e2e   (operator / prod-like)
 
 **Measured:** ASGI **5/5**; live **9/9** (`docs/e2e_results.json`).
 
-**Design Q:** *“What did you break on purpose?”* — Redis ping, tool budget, jailbreak, cross-tenant, bad JWT, injected STM failure → DLQ.  
-**Design Q:** *“How do you validate prod?”* — `synapse-e2e --api https://…` after rollout; same JSON artifact shape as local.
+**Why:** *“What did you break on purpose?”* — Redis ping, tool budget, jailbreak, cross-tenant, bad JWT, injected STM failure → DLQ.  
+**Why:** *“How do you validate prod?”* — `synapse-e2e --api https://…` after rollout; same JSON artifact shape as local.
 
 ---
 
@@ -738,7 +738,7 @@ These are **conscious omissions**, not forgotten todos:
 | Item | Status | Why deferred |
 |---|---|---|
 | `terraform apply` / always-on ECS | Scripts + plan ready; apply is operator-run | Billable NAT/ALB/RDS — don’t auto-spend in CI |
-| SQS + async ask worker | Not built | Sync ask + Postgres DLQ-lite (`/v1/runs/failed`) covers the portfolio story |
+| SQS + async ask worker | Not built | Sync ask + Postgres DLQ-lite (`/v1/runs/failed`) covers the current product path |
 | LangSmith / full OTel→Jaeger | Not used | STM checkpoints already audit the agent run |
 | Prometheus multi-node TSDB | Not built | In-process `/v1/metrics` is enough for single instance |
 | Answer / semantic result cache | Explicitly rejected | Would disagree with live PATCH demos |

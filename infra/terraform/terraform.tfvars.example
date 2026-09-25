@@ -3,7 +3,7 @@ aws_region   = "us-east-1"
 environment  = "prod"
 name_prefix  = "synapse"
 
-# Fargate sizing (portfolio defaults — raise for real load)
+# Fargate sizing (demo defaults — raise for real load)
 api_cpu           = 512
 api_memory        = 1024
 api_desired_count = 0   # scale to 1+ via scripts/deploy/rollout after ecr_push

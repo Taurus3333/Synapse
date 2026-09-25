@@ -8,7 +8,7 @@ Companion to `README.md` (project overview) and `ARCHITECTURE.md` (how to recons
 
 ## Final system (Chunk 22)
 
-Synapse is a **portfolio-complete** Agentic RAG product over a seedable multi-tenant work graph:
+Synapse is a **complete** Agentic RAG product over a seedable multi-tenant work graph:
 
 - Live enterprise SQL + optional public/private externals + RAG + STM/LTM  
 - Bounded LangGraph with **code-owned first hops** and residual LLM probe  
