@@ -2,8 +2,6 @@
 
 **Agentic RAG over heterogeneous live work data** — multi-tenant enterprise graph, JWT tenancy, MCP tools, LangGraph-bounded agent with **code-owned multi-hop**, grounded citations, STM + LTM, eval, red-team, measured perf/cost, Terraform, CI gates, E2E.
 
-> Portfolio system is **complete for the original build plan** (chunks 0–22).  
-> Honest gaps: live `terraform apply` is operator-run (billable); ask is sync (no SQS worker); LangSmith/Prometheus not used by design.
 
 ## Pitch
 
