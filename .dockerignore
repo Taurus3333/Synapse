@@ -1,0 +1,22 @@
+# .dockerignore for Synapse API image
+.venv/
+venv/
+.git/
+.github/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+docs/
+infra/
+tests/
+scripts/
+data/
+*.md
+!README.md
+.cursor/
+agent-transcripts/

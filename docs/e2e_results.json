@@ -1,0 +1,161 @@
+{
+  "measured_at": "2026-09-25T10:04:36.933992+00:00",
+  "api": "http://127.0.0.1:8000",
+  "n_cases": 9,
+  "n_passed": 9,
+  "passed": true,
+  "cases": [
+    {
+      "id": "E01_health",
+      "name": "Health ok",
+      "kind": "prod",
+      "passed": true,
+      "evidence": {
+        "status": "ok",
+        "checks": {
+          "postgres": {
+            "status": "ok",
+            "latency_ms": 14.069,
+            "error": null
+          },
+          "redis": {
+            "status": "ok",
+            "latency_ms": 1.956,
+            "error": null
+          }
+        }
+      },
+      "error": ""
+    },
+    {
+      "id": "E02_multihop",
+      "name": "Multihop pack (LLM-free)",
+      "kind": "happy",
+      "passed": true,
+      "evidence": {
+        "live_status": "at_risk",
+        "item_count": 54,
+        "hop_tools": [
+          "document_search",
+          "email_search",
+          "meeting_search",
+          "memory_search",
+          "github_search",
+          "hn_search",
+          "stackoverflow_search",
+          "wikipedia_search"
+        ]
+      },
+      "error": ""
+    },
+    {
+      "id": "E03_live_precedence",
+      "name": "Live status PATCH reflected in multihop",
+      "kind": "happy",
+      "passed": true,
+      "evidence": {
+        "live_status_after_patch": "active"
+      },
+      "error": ""
+    },
+    {
+      "id": "E04_guardrail",
+      "name": "Jailbreak blocked before spend",
+      "kind": "failure",
+      "passed": true,
+      "evidence": {
+        "status": 400,
+        "detail": {
+          "error": "guardrail_blocked",
+          "reason": "policy_block",
+          "flags": [
+            "instruction_override",
+            "secret_exfiltration"
+          ]
+        }
+      },
+      "error": ""
+    },
+    {
+      "id": "E05_cross_tenant",
+      "name": "Globex denied ATLAS",
+      "kind": "failure",
+      "passed": true,
+      "evidence": {
+        "status": 404
+      },
+      "error": ""
+    },
+    {
+      "id": "E06_bad_jwt",
+      "name": "Invalid JWT -> 401",
+      "kind": "failure",
+      "passed": true,
+      "evidence": {
+        "status": 401
+      },
+      "error": ""
+    },
+    {
+      "id": "E07_metrics",
+      "name": "Metrics snapshot",
+      "kind": "prod",
+      "passed": true,
+      "evidence": {
+        "note": "In-process aggregates since process start. Per-run audit lives in STM checkpoints + tool_trail \u2014 not LangSmith.",
+        "keys": [
+          "ask_tool_calls_total",
+          "asks_total|outcome=guardrail_blocked",
+          "asks_total|outcome=ok",
+          "http_requests_total|method=GET,route=/health,status_class=2xx",
+          "http_requests_total|method=GET,route=/v1/connectors/ready,status_class=2xx",
+          "http_requests_total|method=GET,route=/v1/metrics,status_class=2xx"
+        ]
+      },
+      "error": ""
+    },
+    {
+      "id": "E08_connectors",
+      "name": "Connectors ready probe",
+      "kind": "prod",
+      "passed": true,
+      "evidence": {
+        "body_keys": [
+          "ready",
+          "probes",
+          "providers"
+        ]
+      },
+      "error": ""
+    },
+    {
+      "id": "E09_ask",
+      "name": "Full ask grounded",
+      "kind": "happy",
+      "passed": true,
+      "evidence": {
+        "latency_ms": 8506.8,
+        "citation_count": 2,
+        "usage": {
+          "tool_calls": 14,
+          "evidence_items": 104,
+          "probe_steps": 1,
+          "prompt_tokens": 2120,
+          "completion_tokens": 886,
+          "chat_calls": 3,
+          "embed_tokens": 6,
+          "embed_calls": 1,
+          "embed_cache_hits": 0,
+          "total_tokens": 3012,
+          "cost_usd": {
+            "chat_usd": 0.000655,
+            "embed_usd": 0.0,
+            "total_usd": 0.000655
+          }
+        },
+        "run_id": "run_a09ea67eb69a44fb"
+      },
+      "error": ""
+    }
+  ]
+}

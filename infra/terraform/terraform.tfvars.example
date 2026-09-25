@@ -1,0 +1,27 @@
+# Copy to terraform.tfvars (gitignored) or export TF_VAR_* — never commit secrets.
+aws_region   = "us-east-1"
+environment  = "prod"
+name_prefix  = "synapse"
+
+# Fargate sizing (portfolio defaults — raise for real load)
+api_cpu           = 512
+api_memory        = 1024
+api_desired_count = 0   # scale to 1+ via scripts/deploy/rollout after ecr_push
+api_image_tag     = "latest"
+
+db_instance_class = "db.t4g.micro"
+redis_node_type   = "cache.t4g.micro"
+
+# Optional HTTPS (ACM certificate in the same region as the ALB):
+# acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/…"
+
+# Set via environment before apply (never commit):
+#   $env:TF_VAR_jwt_secret = "...."   (≥32 chars, not the local dev-only value)
+#   $env:TF_VAR_groq_api_key = "...."
+#   $env:TF_VAR_openai_api_key = "...."
+#
+# Deploy sequence:
+#   .\scripts\deploy\apply.ps1
+#   .\scripts\deploy\ecr_push.ps1
+#   .\scripts\deploy\rollout.ps1 -DesiredCount 1
+#   .\scripts\deploy\bootstrap.ps1

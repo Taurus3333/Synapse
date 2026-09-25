@@ -1,0 +1,79 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synapse"
+version = "0.1.0"
+description = "Agentic RAG over live enterprise work data and persistent memory."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.12",
+    "uvicorn[standard]==0.34.2",
+    "pydantic==2.11.4",
+    "pydantic-settings==2.9.1",
+    "sqlalchemy[asyncio]==2.0.40",
+    "asyncpg==0.30.0",
+    "redis==5.2.1",
+    "structlog==25.2.0",
+    "openai==1.76.0",
+    "pgvector==0.4.1",
+    "httpx==0.28.1",
+    "streamlit==1.44.1",
+    "PyJWT==2.10.1",
+    "bcrypt==4.3.0",
+    "langgraph>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx==0.28.1",
+    "mypy==1.15.0",
+    "pytest==8.3.5",
+    "pytest-asyncio==0.26.0",
+    "ruff==0.11.6",
+]
+redteam = [
+    "pyrit>=0.9,<1",
+]
+
+[project.scripts]
+synapse-api = "synapse.api.app:main"
+synapse-data = "synapse.data.__main__:main"
+synapse-seed = "synapse.platform.bootstrap:main"
+synapse-ingest = "synapse.rag.__main__:main"
+synapse-mcp = "synapse.tools.mcp_server:main"
+synapse-ui = "synapse.ui.__main__:main"
+synapse-eval = "synapse.eval.__main__:main"
+synapse-redteam = "synapse.redteam.__main__:main"
+synapse-perf = "synapse.perf.__main__:main"
+synapse-e2e = "synapse.e2e.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["synapse"]
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "integration: requires reachable Postgres and Redis",
+    "redteam: adversarial / PyRIT converter suite",
+    "e2e: end-to-end HTTP journeys (ASGI + seeded DB)",
+    "e2e_live: requires a running synapse-api (optional local/prod validation)",
+]

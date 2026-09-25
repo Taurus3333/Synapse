@@ -1,0 +1,1 @@
+"""Synapse Streamlit UI package."""

@@ -1,0 +1,263 @@
+{
+  "base_url": "http://127.0.0.1:8000",
+  "project_key": "ATLAS",
+  "email": "uma.berg.0@northwind.example",
+  "pricing": {
+    "chat": {
+      "model": "groq/openai/gpt-oss-20b",
+      "input_usd_per_mtok": 0.1,
+      "output_usd_per_mtok": 0.5,
+      "notes": "Groq list-class estimate; verify console for current tier."
+    },
+    "embeddings": {
+      "model": "openai/text-embedding-3-small",
+      "input_usd_per_mtok": 0.02,
+      "notes": "OpenAI list price for text-embedding-3-small."
+    },
+    "disclaimer": "Estimates from list prices \u00d7 measured tokens \u2014 not provider invoices."
+  },
+  "scenarios": [
+    {
+      "id": "ask_atlas_q2",
+      "endpoint": "/v1/ask",
+      "question": "Summarize what changed in ATLAS during Q2 and identify the major risks.",
+      "n": 3,
+      "latency": {
+        "n": 3,
+        "min_ms": 12024.21,
+        "p50_ms": 23608.46,
+        "p95_ms": 45256.38,
+        "max_ms": 47661.7,
+        "mean_ms": 27764.79
+      },
+      "usage_totals": {
+        "prompt_tokens": 7389,
+        "completion_tokens": 4191,
+        "chat_calls": 9,
+        "embed_tokens": 18,
+        "embed_calls": 3,
+        "embed_cache_hits": 0,
+        "total_tokens": 11598,
+        "tool_calls": 42,
+        "probe_steps": 3,
+        "evidence_items": 324,
+        "n_ok": 3,
+        "avg_prompt_tokens": 2463.0,
+        "avg_completion_tokens": 1397.0,
+        "avg_total_tokens": 3866.0,
+        "avg_tool_calls": 14.0,
+        "avg_chat_calls": 3.0,
+        "avg_probe_steps": 1.0
+      },
+      "cost_usd_est": {
+        "aggregate": {
+          "chat_usd": 0.002834,
+          "embed_usd": 0.0,
+          "total_usd": 0.002835
+        },
+        "per_successful_ask": {
+          "chat_usd": 0.000945,
+          "embed_usd": 0.0,
+          "total_usd": 0.000945
+        }
+      },
+      "samples": [
+        {
+          "endpoint": "/v1/ask",
+          "latency_ms": 12024.21,
+          "status": 200,
+          "usage": {
+            "tool_calls": 14,
+            "evidence_items": 108,
+            "probe_steps": 1,
+            "prompt_tokens": 2435,
+            "completion_tokens": 1427,
+            "chat_calls": 3,
+            "embed_tokens": 6,
+            "embed_calls": 1,
+            "embed_cache_hits": 0,
+            "total_tokens": 3868,
+            "cost_usd": {
+              "chat_usd": 0.000957,
+              "embed_usd": 0.0,
+              "total_usd": 0.000957
+            }
+          },
+          "run_id": "run_c4e9efa47485405f",
+          "error": "",
+          "answer_chars": 774,
+          "citation_count": 18,
+          "hop_count": 8,
+          "probe_steps": 1
+        },
+        {
+          "endpoint": "/v1/ask",
+          "latency_ms": 23608.46,
+          "status": 200,
+          "usage": {
+            "tool_calls": 14,
+            "evidence_items": 108,
+            "probe_steps": 1,
+            "prompt_tokens": 2477,
+            "completion_tokens": 1513,
+            "chat_calls": 3,
+            "embed_tokens": 6,
+            "embed_calls": 1,
+            "embed_cache_hits": 0,
+            "total_tokens": 3996,
+            "cost_usd": {
+              "chat_usd": 0.001004,
+              "embed_usd": 0.0,
+              "total_usd": 0.001004
+            }
+          },
+          "run_id": "run_0fa44f0ccb20489a",
+          "error": "",
+          "answer_chars": 951,
+          "citation_count": 19,
+          "hop_count": 8,
+          "probe_steps": 1
+        },
+        {
+          "endpoint": "/v1/ask",
+          "latency_ms": 47661.7,
+          "status": 200,
+          "usage": {
+            "tool_calls": 14,
+            "evidence_items": 108,
+            "probe_steps": 1,
+            "prompt_tokens": 2477,
+            "completion_tokens": 1251,
+            "chat_calls": 3,
+            "embed_tokens": 6,
+            "embed_calls": 1,
+            "embed_cache_hits": 0,
+            "total_tokens": 3734,
+            "cost_usd": {
+              "chat_usd": 0.000873,
+              "embed_usd": 0.0,
+              "total_usd": 0.000873
+            }
+          },
+          "run_id": "run_1e3101db35374ead",
+          "error": "",
+          "answer_chars": 974,
+          "citation_count": 20,
+          "hop_count": 8,
+          "probe_steps": 1
+        }
+      ],
+      "notes": "Full agent path (plan\u2192gather\u2192follow\u2192probe*\u2192finish\u2192evidence\u2192synthesise)."
+    },
+    {
+      "id": "multihop_atlas_q2",
+      "endpoint": "/v1/multihop",
+      "question": "Summarize what changed in ATLAS during Q2 and identify the major risks.",
+      "n": 5,
+      "latency": {
+        "n": 5,
+        "min_ms": 5948.41,
+        "p50_ms": 8707.74,
+        "p95_ms": 9441.49,
+        "max_ms": 9611.34,
+        "mean_ms": 8340.33
+      },
+      "usage_totals": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "chat_calls": 0,
+        "embed_tokens": 0,
+        "embed_calls": 0,
+        "embed_cache_hits": 0,
+        "total_tokens": 0,
+        "tool_calls": 0,
+        "probe_steps": 0,
+        "evidence_items": 0,
+        "n_ok": 5,
+        "avg_prompt_tokens": 0.0,
+        "avg_completion_tokens": 0.0,
+        "avg_total_tokens": 0.0,
+        "avg_tool_calls": 0.0,
+        "avg_chat_calls": 0.0,
+        "avg_probe_steps": 0.0
+      },
+      "cost_usd_est": {
+        "aggregate": {
+          "chat_usd": 0.0,
+          "embed_usd": 0.0,
+          "total_usd": 0.0
+        },
+        "per_successful_ask": {
+          "chat_usd": 0.0,
+          "embed_usd": 0.0,
+          "total_usd": 0.0
+        }
+      },
+      "samples": [
+        {
+          "endpoint": "/v1/multihop",
+          "latency_ms": 9611.34,
+          "status": 200,
+          "usage": {},
+          "run_id": null,
+          "error": "",
+          "answer_chars": 0,
+          "citation_count": 0,
+          "hop_count": 8,
+          "probe_steps": 0
+        },
+        {
+          "endpoint": "/v1/multihop",
+          "latency_ms": 8672.04,
+          "status": 200,
+          "usage": {},
+          "run_id": null,
+          "error": "",
+          "answer_chars": 0,
+          "citation_count": 0,
+          "hop_count": 8,
+          "probe_steps": 0
+        },
+        {
+          "endpoint": "/v1/multihop",
+          "latency_ms": 8762.11,
+          "status": 200,
+          "usage": {},
+          "run_id": null,
+          "error": "",
+          "answer_chars": 0,
+          "citation_count": 0,
+          "hop_count": 8,
+          "probe_steps": 0
+        },
+        {
+          "endpoint": "/v1/multihop",
+          "latency_ms": 8707.74,
+          "status": 200,
+          "usage": {},
+          "run_id": null,
+          "error": "",
+          "answer_chars": 0,
+          "citation_count": 0,
+          "hop_count": 8,
+          "probe_steps": 0
+        },
+        {
+          "endpoint": "/v1/multihop",
+          "latency_ms": 5948.41,
+          "status": 200,
+          "usage": {},
+          "run_id": null,
+          "error": "",
+          "answer_chars": 0,
+          "citation_count": 0,
+          "hop_count": 8,
+          "probe_steps": 0
+        }
+      ],
+      "notes": "LLM-free gather\u2192follow\u2192pack baseline (no chat tokens)."
+    }
+  ],
+  "disclaimer": "Latencies are wall-clock against a live local API. USD figures are list-price estimates \u00d7 measured tokens \u2014 not invoices.",
+  "measured_at": "2026-09-25T09:22:23.260073+00:00"
+}
