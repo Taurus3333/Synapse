@@ -199,8 +199,15 @@ pytest -m e2e -q      # ASGI e2e (no live HTTP required)
 | ASGI E2E | **5/5** |
 | Terraform | `validate` OK · `plan` **45 to add** (apply is operator-run) |
 
-Chat: Groq `openai/gpt-oss-20b` · Embed: OpenAI `text-embedding-3-small`.  
-USD = list-price × measured tokens (not invoices). Latencies = local wall-clock (not an SLA).
+### Models & providers (why these)
+
+| Role | Provider / model | Why |
+|---|---|---|
+| **Chat** (plan / probe / synthesise) | **Groq** `openai/gpt-oss-20b` via OpenAI-compatible API | Same `AsyncOpenAI` client (`base_url` → Groq); open-weight hosted inference; list prices used by `synapse-perf` → measured ask ≈ **~$0.00095**. Fallback: OpenAI **`gpt-4o-mini`** if only `SYNAPSE_OPENAI_API_KEY` is set. |
+| **Embeddings** (ingest + query) | **OpenAI** `text-embedding-3-small` (1536-d) | Fixed vector space for pgvector HNSW + content-hash cache; cheap (~$0.02/MTok); ask-time embed is noise (~6 tokens). **Requires OpenAI even when chat is on Groq** — chat host ≠ embed index. Switching embed model ⇒ full `synapse-ingest` rebuild. |
+
+USD = list-price × measured tokens (not invoices). Latencies = local wall-clock (not an SLA).  
+Full trade-off write-up: `ARCHITECTURE.md` → **§5 “Chat model vs embedding model”**.
 
 **Do we reindex RAG every ask?** No. Live status is SQL; vectors are documents only (`synapse-ingest` when docs change). See `ARCHITECTURE.md` §4.
 

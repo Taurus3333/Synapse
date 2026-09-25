@@ -388,6 +388,31 @@ EvidencePack (precedence 10) → synthesise → ground citations
 
 **Vector DB is not source of truth.** Approximate recall only.
 
+### Chat model vs embedding model (why Groq + OpenAI)
+
+Synapse splits **generation** and **embedding** on purpose. They are different jobs with different failure modes and pricing.
+
+```text
+Chat (plan / probe / synthesise)
+    preferred: Groq  OpenAI-compatible API  →  model openai/gpt-oss-20b
+    fallback:  OpenAI api.openai.com         →  model gpt-4o-mini
+    client:    AsyncOpenAI (same SDK; Groq = different base_url)
+
+Embeddings (ingest + document_search query)
+    only:      OpenAI  text-embedding-3-small  (1536-d)
+    stored in: document_chunks + HNSW; content-hash cache keyed to that model
+```
+
+| | Requirement | Problem | Choice | Trade-off |
+|---|---|---|---|---|
+| **Chat** | Structured JSON for plan/probe/answer; several calls per ask; keep $/ask low | A single heavy hosted chat model would dominate cost; free local GPU is not the deploy story | **Groq first** (`SYNAPSE_GROQ_API_KEY`) hosting `openai/gpt-oss-20b` via OpenAI-compatible Completions; **OpenAI `gpt-4o-mini` fallback** if only `SYNAPSE_OPENAI_API_KEY` is set | Groq-specific `tool_use_failed` quirks need recovery in `_chat` (see `PROJECT.md`); chat quality ≠ embed quality |
+| **Embed** | Stable vector space for ANN; cheap query embeds; re-ingest only when docs change | Mixing embed models/dims invalidates HNSW + content-hash cache; ask-time re-embed of the corpus is waste | **OpenAI `text-embedding-3-small` only** — fixed 1536-d, list ~$0.02/MTok; ask embed ≈ noise (~6 tokens) vs chat | Requires an OpenAI key even when chat runs on Groq; switching embed model means full `synapse-ingest` rebuild |
+
+**Why not one vendor for everything?** Chat can swap hosts (Groq ↔ OpenAI) without touching the vector index. Embeddings **are** the index contract — one model id + dim for the life of `document_chunks`.  
+**Why not local / open embedders only?** Viable later; this build standardizes on a hosted embed API so CI/demo machines don’t need a GPU and dims stay comparable across operators.  
+**Why Groq for chat specifically?** OpenAI-compatible API → one client code path; open-weight hosted model with list prices used in `synapse-perf` (~$0.10/$0.50 per MTok in/out) → measured ask ≈ **$0.00095** under the ATLAS Q2 harness.  
+**Why OpenAI embeddings specifically?** Reliable hosted embed product Synapse already wires through `Embedder`; cheap enough that embed cost is not the ask bill; matches pgvector rows tagged `embedding_model` / `embedding_dim`.
+
 ---
 
 ## 6. Live vs external vs RAG vs STM vs LTM
@@ -771,4 +796,5 @@ Everything else in §§1–16 is **as built** and covered by tests, CLIs, or mea
 17. Deploy = apply → ecr_push → rollout → bootstrap; prod Settings refuse dev JWT / localhost.  
 18. Merge gate = `ci-ok` (eval + redteam + audit + terraform + image + e2e); deploy is manual.  
 19. Break it on purpose — budget, Redis, jailbreak, cross-tenant — then show the JSON proof.  
-20. Docs split: README runs/demos · ARCHITECTURE explains design · PROJECT narrates — no invented metrics.  
+20. Chat = Groq `openai/gpt-oss-20b` (OpenAI `gpt-4o-mini` fallback); embeds = OpenAI `text-embedding-3-small` only — don’t mix embed models into an existing index.  
+21. Docs split: README runs/demos · ARCHITECTURE explains design · PROJECT narrates — no invented metrics.  

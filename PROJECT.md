@@ -80,6 +80,7 @@ CI jobs call the same `synapse-eval` / `synapse-redteam` humans run. E2E is two 
 - LTM lowest precedence — never overrides live status.  
 - Public externals by default; personal tokens optional.  
 - First cross-source hops are **code-owned**; LLM probes leftovers only.  
+- **Chat on Groq** (`openai/gpt-oss-20b`, OpenAI-compatible client) with **OpenAI `gpt-4o-mini` fallback**; **embeddings only on OpenAI** (`text-embedding-3-small`) so the pgvector index stays one model/dim.  
 - Eval/red-team = closed-world pass rates — no LLM-as-judge scores.  
 - Measure before optimize; budgets come from harness evidence.  
 - Skip products that don’t earn their complexity (LangSmith, EKS, answer cache, auto-apply).
