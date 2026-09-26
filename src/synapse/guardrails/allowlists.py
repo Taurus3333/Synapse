@@ -24,12 +24,9 @@ ALLOWED_PROBE_TOOLS = frozenset(
         "document_search",
         "email_search",
         "meeting_search",
-        "github_search",
-        "slack_search",
-        "gmail_search",
         "hn_search",
         "stackoverflow_search",
-        "wikipedia_search",
+        "tavily_search",
         "memory_search",
         "memory_write",
     }

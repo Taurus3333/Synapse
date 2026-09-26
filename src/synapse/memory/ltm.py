@@ -132,7 +132,10 @@ class LongTermMemory:
         question: str,
         answer: str,
     ) -> str | None:
-        """Persist a short durable summary after a successful ask. Never stores live status as gospel."""
+        """Persist a short durable summary after a successful ask.
+
+        Never stores live status as gospel.
+        """
         snippet = answer.strip().replace("\n", " ")
         if len(snippet) > 600:
             snippet = snippet[:600] + "…"

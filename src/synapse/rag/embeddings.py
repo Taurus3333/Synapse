@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Any, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any
 
 from openai import AsyncOpenAI
 
@@ -17,10 +18,16 @@ EMBED_DIM = 1536
 
 
 class Embedder:
-    def __init__(self, api_key: str, *, usage: UsageAccumulator | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        usage: UsageAccumulator | None = None,
+        timeout_s: float = 20.0,
+    ) -> None:
         if not api_key:
             raise RuntimeError("SYNAPSE_OPENAI_API_KEY is required for embeddings")
-        self._client = AsyncOpenAI(api_key=api_key)
+        self._client = AsyncOpenAI(api_key=api_key, timeout=timeout_s)
         self._cache: dict[str, list[float]] = {}
         self.usage = usage
 
@@ -51,7 +58,9 @@ class Embedder:
             if not batch:
                 continue
 
-            async def _once(b: list[str] = list(batch)) -> Any:
+            captured = list(batch)
+
+            async def _once(b: list[str] = captured) -> Any:
                 return await self._client.embeddings.create(model=EMBED_MODEL, input=b)
 
             resp = await with_retry(_once, policy=RetryPolicy(attempts=3, base_delay_s=0.3))

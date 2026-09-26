@@ -1,7 +1,11 @@
-"""Typed tool contracts. Tenant/user never accepted as tool args — bound at session start."""
+"""Typed tool contracts for the Atlas cutover brief.
+
+Tenant and user are never tool arguments. They are bound from the logged-in user.
+"""
 
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -253,21 +257,6 @@ async def meeting_search(session: ToolSession, args: SearchIn) -> dict[str, Any]
     }
 
 
-async def github_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
-    session._bump("github_search")
-    return await connectors.github_search(query=args.query, limit=args.limit)
-
-
-async def slack_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
-    session._bump("slack_search")
-    return await connectors.slack_search(query=args.query, limit=args.limit)
-
-
-async def gmail_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
-    session._bump("gmail_search")
-    return await connectors.gmail_search(query=args.query, limit=args.limit)
-
-
 async def hn_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
     session._bump("hn_search")
     return await connectors.hackernews_search(query=args.query, limit=args.limit)
@@ -278,9 +267,9 @@ async def stackoverflow_search(session: ToolSession, args: ExtSearchIn) -> dict[
     return await connectors.stackoverflow_search(query=args.query, limit=args.limit)
 
 
-async def wikipedia_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
-    session._bump("wikipedia_search")
-    return await connectors.wikipedia_search(query=args.query, limit=args.limit)
+async def tavily_search(session: ToolSession, args: ExtSearchIn) -> dict[str, Any]:
+    session._bump("tavily_search")
+    return await connectors.tavily_search(query=args.query, limit=args.limit)
 
 
 async def memory_search(session: ToolSession, args: MemorySearchIn) -> dict[str, Any]:
@@ -314,12 +303,9 @@ async def memory_write(session: ToolSession, args: MemoryWriteIn) -> dict[str, A
 
 
 _EXTERNAL_TOOLS = {
-    "github_search",
-    "slack_search",
-    "gmail_search",
     "hn_search",
     "stackoverflow_search",
-    "wikipedia_search",
+    "tavily_search",
 }
 
 TOOLS = {
@@ -331,14 +317,46 @@ TOOLS = {
     "document_search": (SearchIn, document_search),
     "email_search": (SearchIn, email_search),
     "meeting_search": (SearchIn, meeting_search),
-    "github_search": (ExtSearchIn, github_search),
-    "slack_search": (ExtSearchIn, slack_search),
-    "gmail_search": (ExtSearchIn, gmail_search),
     "hn_search": (ExtSearchIn, hn_search),
     "stackoverflow_search": (ExtSearchIn, stackoverflow_search),
-    "wikipedia_search": (ExtSearchIn, wikipedia_search),
+    "tavily_search": (ExtSearchIn, tavily_search),
     "memory_search": (MemorySearchIn, memory_search),
     "memory_write": (MemoryWriteIn, memory_write),
+}
+
+# Why each tool exists on a cutover go/no-go. MCP lists these; it does not add tools.
+TOOL_DOCS: dict[str, str] = {
+    "project_lookup": (
+        "Live status, owner, priority, and dates for one project in the logged-in company."
+    ),
+    "task_search": "Tasks on that project, including cutover slices blocked before the freeze.",
+    "risk_list": "Open and closed risks on that project. Live rows, not the status report.",
+    "blocker_list": "Blockers on that project, including the vendor SDK freeze blocker.",
+    "project_activity": "What changed on the project in a time window.",
+    "document_search": "Status reports and design notes already embedded for that project.",
+    "email_search": "Project email about the cutover. Seeded company mail, not an external inbox.",
+    "meeting_search": "Meeting notes for that project, including the Q2 retro.",
+    "hn_search": "Hacker News posts. Public signal about a vendor SDK miss. Not company status.",
+    "stackoverflow_search": "Stack Overflow questions on SDK integration or deploy failure.",
+    "tavily_search": "Web pages on the vendor SDK cutover. Requires a Tavily key; otherwise a gap.",
+    "memory_search": "Durable notes from earlier asks. Lowest trust. Never overrides live status.",
+    "memory_write": "Store a durable note for this company. Requires a role that can write.",
+}
+
+TOOL_TIMEOUT_S: dict[str, float] = {
+    "project_lookup": 10,
+    "task_search": 10,
+    "risk_list": 10,
+    "blocker_list": 10,
+    "project_activity": 10,
+    "document_search": 25,
+    "email_search": 10,
+    "meeting_search": 10,
+    "hn_search": 20,
+    "stackoverflow_search": 20,
+    "tavily_search": 25,
+    "memory_search": 10,
+    "memory_write": 10,
 }
 
 
@@ -351,8 +369,18 @@ async def call_tool(session: ToolSession, name: str, raw: dict[str, Any]) -> dic
     except Exception as exc:
         return {"error": f"invalid args: {exc}"}
     started = time.perf_counter()
+    timeout_s = TOOL_TIMEOUT_S.get(name, 15.0)
     try:
-        result = await fn(session, args)
+        result = await asyncio.wait_for(fn(session, args), timeout=timeout_s)
+    except TimeoutError:
+        get_metrics().incr("tool_calls_total", tool=name, outcome="error")
+        get_metrics().observe(
+            "tool_duration_ms",
+            (time.perf_counter() - started) * 1000.0,
+            tool=name,
+            outcome="error",
+        )
+        return {"error": "tool_timeout", "tool": name}
     except Exception:
         get_metrics().incr("tool_calls_total", tool=name, outcome="error")
         get_metrics().observe(

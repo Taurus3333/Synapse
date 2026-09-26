@@ -8,9 +8,9 @@ import asyncio
 from synapse.platform.config import get_settings
 from synapse.platform.db import Database
 from synapse.platform.seed import create_schema, session_factory
+from synapse.rag import store as _store  # noqa: F401 — register ChunkRow on Base
 from synapse.rag.embeddings import Embedder
 from synapse.rag.ingest import ingest_all_documents
-from synapse.rag import store as _store  # noqa: F401 — register ChunkRow on Base
 
 
 async def _run(tenant_id: str | None) -> None:

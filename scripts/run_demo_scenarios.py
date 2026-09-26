@@ -15,6 +15,8 @@ from typing import Any
 
 import httpx
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
+
 API = "http://127.0.0.1:8000"
 PASSWORD = "synapse-demo"
 OUT = Path(__file__).resolve().parents[1] / "docs" / "demo_results.json"
@@ -53,7 +55,7 @@ def run() -> list[ScenarioResult]:
         gx = _token(client, "quinn.novak.0@globex.example")
 
         # 1 Basic grounded + 2 Multihop (ask path)
-        q1 = "Summarize what changed in ATLAS during Q2 and identify the major risks."
+        q1 = ATLAS_CUTOVER_ASK
         try:
             r = client.post(
                 "/v1/ask",
@@ -70,9 +72,11 @@ def run() -> list[ScenarioResult]:
             results.append(
                 ScenarioResult(
                     id="S1_grounded_multihop",
-                    name="Grounded Q2 ask + multi-hop",
-                    proves="Live enterprise answer with citations/hops (not a template)",
-                    ui_how="Sign in as uma.berg → ATLAS → starter “Summarize what changed…” → Evidence expander",
+                    name="Atlas freeze go/no-go",
+                    proves="Live cutover answer with citations/hops (not a template)",
+                    ui_how=(
+                        "Sign in as uma.berg → ATLAS → freeze starter → Evidence expander"
+                    ),
                     passed=ok,
                     evidence={
                         "run_id": body.get("run_id"),

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "synapse"
 version = "0.1.0"
-description = "Agentic RAG over live enterprise work data and persistent memory."
+description = "Go/no-go brief for the Northwind Atlas platform cutover."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -59,6 +59,10 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI uses Depends() and Query() as argument defaults. That is the framework API.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
 
 [tool.mypy]
 python_version = "3.12"

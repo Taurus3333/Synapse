@@ -83,7 +83,8 @@ def parse_plan(raw: str) -> tuple[PlanOutput, list[str]]:
     except ValidationError:
         warnings.append("plan_validation_fallback")
         slots = data.get("slots") if isinstance(data.get("slots"), list) else list(PLAN_SLOTS)
-        return PlanOutput(slots=[s for s in slots if s in ALLOWED_SLOTS] or list(PLAN_SLOTS)), warnings
+        kept = [s for s in slots if s in ALLOWED_SLOTS] or list(PLAN_SLOTS)
+        return PlanOutput(slots=kept), warnings
 
 
 def parse_probe(raw: str) -> tuple[ProbeStep | None, list[str]]:
@@ -105,7 +106,10 @@ def parse_synthesis(raw: str) -> tuple[SynthesisOutput, list[str]]:
     if data is None:
         warnings.append("synthesis_parse_fallback")
         prose = (raw or "").strip() or "Unable to parse model output."
-        return SynthesisOutput(answer=prose, citations=[], gaps=["unstructured_model_output"]), warnings
+        return (
+            SynthesisOutput(answer=prose, citations=[], gaps=["unstructured_model_output"]),
+            warnings,
+        )
     try:
         return SynthesisOutput.model_validate(data), warnings
     except ValidationError:

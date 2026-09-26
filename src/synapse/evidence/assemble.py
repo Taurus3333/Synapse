@@ -33,7 +33,10 @@ def assemble_pack(
                     source_kind=SourceKind.LIVE,
                     source="project_lookup",
                     record_id=str(result["id"]),
-                    summary=f"{result.get('key')} status={live_status} priority={result.get('priority')}",
+                    summary=(
+                        f"{result.get('key')} status={live_status} "
+                        f"priority={result.get('priority')}"
+                    ),
                     payload=result,
                     precedence=0,
                 )
@@ -137,12 +140,9 @@ def assemble_pack(
                 )
 
         elif tool in {
-            "github_search",
-            "slack_search",
-            "gmail_search",
             "hn_search",
             "stackoverflow_search",
-            "wikipedia_search",
+            "tavily_search",
         }:
             if result.get("unavailable"):
                 gaps.append(f"{tool}:unavailable")

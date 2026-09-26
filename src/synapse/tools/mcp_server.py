@@ -18,14 +18,14 @@ from synapse.platform.config import get_settings
 from synapse.platform.db import Database
 from synapse.platform.seed import session_factory
 from synapse.rag.embeddings import Embedder
-from synapse.tools.runtime import TOOLS, ToolSession, call_tool
+from synapse.tools.runtime import TOOL_DOCS, TOOLS, ToolSession, call_tool
 
 
 def _tool_schemas() -> list[dict[str, Any]]:
     return [
         {
             "name": name,
-            "description": f"Synapse tool {name}",
+            "description": TOOL_DOCS.get(name, name),
             "inputSchema": schema.model_json_schema(),
         }
         for name, (schema, _) in TOOLS.items()
@@ -52,7 +52,7 @@ async def _handle(session: ToolSession, message: dict[str, Any]) -> dict[str, An
             "result": {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "synapse-tools", "version": "0.1.0"},
+                "serverInfo": {"name": "synapse-cutover", "version": "0.1.0"},
             },
         }
     if method == "tools/list":

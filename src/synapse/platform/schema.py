@@ -290,10 +290,22 @@ class AgentRunRow(Base):
     conflicts: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     usage: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    idempotency_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    response_body: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    __table_args__ = (Index("ix_agent_runs_tenant_created", "tenant_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_agent_runs_tenant_created", "tenant_id", "created_at"),
+        Index(
+            "ix_agent_runs_idempotency",
+            "tenant_id",
+            "user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
 
 
 class AgentCheckpointRow(Base):

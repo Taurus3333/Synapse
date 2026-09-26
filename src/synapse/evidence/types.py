@@ -9,7 +9,7 @@ from typing import Any
 
 class SourceKind(StrEnum):
     LIVE = "live"  # enterprise Postgres — highest trust
-    EXTERNAL = "external"  # public GH/HN/SO (or optional private Slack/Gmail)
+    EXTERNAL = "external"  # Hacker News, Stack Overflow, Tavily — fetched at ask time
     RAG = "rag"
     LTM = "ltm"  # durable memory — never overrides live status
 
@@ -83,7 +83,9 @@ class EvidencePack:
         return {
             "project_key": self.project_key,
             "live_status": self.live_status,
-            "precedence": "live > external APIs > rag > ltm; never let LTM override live project status",
+            "precedence": (
+                "live > external APIs > rag > ltm; never let LTM override live project status"
+            ),
             "live_evidence": [
                 {
                     "id": i.record_id,

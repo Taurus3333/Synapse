@@ -18,6 +18,7 @@ from synapse.api.memory_routes import router as memory_router
 from synapse.api.obs_routes import router as obs_router
 from synapse.api.run_routes import router as run_router
 from synapse.auth.routes import router as auth_router
+from synapse.memory.stm import ShortTermMemory
 from synapse.obs.metrics import get_metrics
 from synapse.platform.config import Settings, get_settings
 from synapse.platform.db import Database, health_error_name
@@ -29,6 +30,7 @@ from synapse.platform.logging import (
 )
 from synapse.platform.redis import RedisClient
 from synapse.platform.seed import session_factory
+from synapse.reliability.admission import AskAdmission
 
 logger = get_logger(__name__)
 
@@ -76,11 +78,19 @@ def create_app(
         configure_logging(json_logs=resolved.log_json, level=resolved.log_level)
         app.state.settings = resolved
         if connect_stores:
-            app.state.db = Database(resolved.database_dsn())
+            app.state.db = Database(
+                resolved.database_dsn(),
+                pool_size=resolved.db_pool_size,
+                max_overflow=resolved.db_max_overflow,
+                pool_timeout_s=resolved.db_pool_timeout_s,
+            )
             app.state.redis = RedisClient(resolved.redis_dsn())
             await app.state.db.connect()
             await app.state.redis.connect()
             app.state.sessions = session_factory(app.state.db.engine)
+            orphaned = await ShortTermMemory(app.state.sessions).fail_orphaned_runs()
+            if orphaned:
+                logger.info("orphaned_runs_reconciled", count=orphaned)
         logger.info("api_started", env=resolved.env, version=__version__)
         try:
             yield
@@ -92,6 +102,10 @@ def create_app(
 
     app = FastAPI(title="Synapse", version=__version__, lifespan=lifespan)
     app.state.settings = resolved
+    app.state.admission = AskAdmission(
+        max_inflight=resolved.ask_max_inflight,
+        max_per_tenant=resolved.ask_max_inflight_per_tenant,
+    )
     app.include_router(auth_router)
     app.include_router(live_router)
     app.include_router(ask_router)

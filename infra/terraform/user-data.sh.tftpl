@@ -1,0 +1,32 @@
+#!/bin/bash
+set -euo pipefail
+exec > /var/log/synapse-bootstrap.log 2>&1
+
+dnf install -y docker git
+systemctl enable --now docker
+mkdir -p /usr/libexec/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64" \
+  -o /usr/libexec/docker/cli-plugins/docker-compose
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+install -d -m 700 /opt/synapse
+git clone --depth 1 --branch "${git_ref}" "${github_repo}" /opt/synapse/src
+cd /opt/synapse/src
+
+aws secretsmanager get-secret-value \
+  --secret-id "${secret_id}" \
+  --region "${aws_region}" \
+  --query SecretString \
+  --output text > /opt/synapse/src/.env
+chmod 600 /opt/synapse/src/.env
+
+docker compose -f docker-compose.yml -f docker-compose.aws.yml up -d --build
+for _ in $(seq 1 60); do
+  if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+    break
+  fi
+  sleep 10
+done
+docker compose -f docker-compose.yml -f docker-compose.aws.yml exec -T api synapse-seed --profile ci --seed 42
+docker compose -f docker-compose.yml -f docker-compose.aws.yml exec -T api synapse-ingest
+echo "synapse bootstrap finished" >> /var/log/synapse-bootstrap.log

@@ -12,10 +12,20 @@ logger = get_logger(__name__)
 
 
 class Database:
-    """Async SQLAlchemy engine. No models live here — that is Chunk 3."""
+    """Async SQLAlchemy engine. Pool size is per process — N replicas multiply it."""
 
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self,
+        url: str,
+        *,
+        pool_size: int = 5,
+        max_overflow: int = 3,
+        pool_timeout_s: float = 10.0,
+    ) -> None:
         self._url = url
+        self._pool_size = pool_size
+        self._max_overflow = max_overflow
+        self._pool_timeout_s = pool_timeout_s
         self._engine: AsyncEngine | None = None
 
     @property
@@ -27,8 +37,19 @@ class Database:
     async def connect(self) -> None:
         if self._engine is not None:
             return
-        self._engine = create_async_engine(self._url, pool_pre_ping=True)
-        logger.info("database_engine_created")
+        self._engine = create_async_engine(
+            self._url,
+            pool_pre_ping=True,
+            pool_size=self._pool_size,
+            max_overflow=self._max_overflow,
+            pool_timeout=self._pool_timeout_s,
+        )
+        logger.info(
+            "database_engine_created",
+            pool_size=self._pool_size,
+            max_overflow=self._max_overflow,
+            pool_timeout_s=self._pool_timeout_s,
+        )
 
     async def close(self) -> None:
         if self._engine is None:

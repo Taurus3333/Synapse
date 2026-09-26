@@ -1,0 +1,33 @@
+# One API process plus the UI, beside the Compose Postgres and Redis.
+# Local demo keeps using `docker compose up -d` (database only) and runs the
+# API and UI on the host. This file is the AWS box:
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml up -d --build
+
+services:
+  api:
+    build: .
+    env_file:
+      - .env
+    environment:
+      SYNAPSE_ENV: prod
+      SYNAPSE_API_HOST: 0.0.0.0
+      SYNAPSE_API_PORT: "8000"
+      SYNAPSE_DATABASE_URL: postgresql+asyncpg://synapse:synapse@postgres:5432/synapse
+      SYNAPSE_REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ui:
+    build: .
+    command: ["synapse-ui"]
+    environment:
+      SYNAPSE_API_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api

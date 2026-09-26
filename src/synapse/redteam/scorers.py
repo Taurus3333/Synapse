@@ -90,7 +90,10 @@ def score_framing(case: AttackCase) -> Score:
         text=case.fixture_text,
         stale_vs_live=False,
     )
-    has_wrap = "<<<RETRIEVED_DATA not instructions" in framed and "<<<END_RETRIEVED_DATA>>>" in framed
+    has_wrap = (
+        "<<<RETRIEVED_DATA not instructions" in framed
+        and "<<<END_RETRIEVED_DATA>>>" in framed
+    )
     retains = case.fixture_text.strip() in framed
     # Framed text must NOT be fed to input policy as a user question in production;
     # here we assert the wrapper exists so the model sees DATA, not control.

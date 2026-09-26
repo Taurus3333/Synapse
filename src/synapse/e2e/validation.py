@@ -12,11 +12,13 @@ from typing import Any
 
 import httpx
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
+
 DEFAULT_API = "http://127.0.0.1:8000"
 DEFAULT_PASSWORD = "synapse-demo"
 NW = "uma.berg.0@northwind.example"
 GX = "quinn.novak.0@globex.example"
-Q2 = "Summarize what changed in ATLAS during Q2 and identify the major risks."
+Q2 = ATLAS_CUTOVER_ASK
 
 
 @dataclass
@@ -152,7 +154,9 @@ def run_validation(
                 )
             )
         except Exception as exc:
-            cases.append(Case("E04_guardrail", "Jailbreak blocked", "failure", False, error=str(exc)))
+            cases.append(
+                Case("E04_guardrail", "Jailbreak blocked", "failure", False, error=str(exc))
+            )
 
         try:
             r = client.post(
@@ -200,7 +204,7 @@ def run_validation(
                     passed="counters" in snap,
                     evidence={
                         "note": snap.get("note"),
-                        "keys": list((snap.get("counters") or {}))[:6],
+                        "keys": list(snap.get("counters") or {})[:6],
                     },
                 )
             )

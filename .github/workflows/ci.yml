@@ -198,7 +198,7 @@ jobs:
         # Skip the editable synapse package itself (not on PyPI); audit its deps.
         run: pip-audit --skip-editable
 
-  infra:
+  terraform:
     name: terraform validate
     runs-on: ubuntu-latest
     defaults:
@@ -227,6 +227,6 @@ jobs:
   ci-ok:
     name: all gates green
     runs-on: ubuntu-latest
-    needs: [lint, test, eval, redteam, audit, infra, image]
+    needs: [lint, test, eval, redteam, audit, terraform, image]
     steps:
-      - run: echo "CI gates passed (lint, test, eval, redteam, audit, terraform, image)"
+      - run: echo "CI gates passed (lint, test, eval, redteam, audit, terraform validate, image)"

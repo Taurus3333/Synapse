@@ -1,11 +1,12 @@
 """LangGraph orchestration: plan → gather → follow → probe* → finish → evidence → synthesise.
 
 The graph is the workflow skeleton. Budgets, tools, grounding, and STM stay in code.
-Follow hops are code-owned (live risks/blockers → docs/email/meetings/memory/github).
+Follow hops are code-owned (live risks/blockers → docs/email/meetings/memory/HN/SO/Tavily).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from dataclasses import dataclass, field
@@ -29,6 +30,7 @@ from synapse.guardrails.structured import (
 )
 from synapse.memory.stm import ShortTermMemory
 from synapse.perf.usage import UsageAccumulator
+from synapse.reliability.circuit import CircuitBreaker, CircuitOpen, get_chat_circuit
 from synapse.tools.runtime import ToolSession, call_tool
 
 
@@ -67,6 +69,8 @@ class GraphContext:
 class AgentBudgets:
     max_probe_steps: int = 3
     max_tool_calls: int = 28
+    deadline_s: float = 120.0
+    chat_timeout_s: float = 25.0
 
 
 @dataclass
@@ -82,6 +86,7 @@ class AgentResult:
     run_id: str | None = None
     checklist: dict[str, str] = field(default_factory=dict)
     hops: list[dict[str, Any]] = field(default_factory=list)
+    evidence: dict[str, Any] = field(default_factory=dict)
 
 
 async def _chat(
@@ -91,8 +96,12 @@ async def _chat(
     *,
     temperature: float = 0,
     usage: UsageAccumulator | None = None,
+    breaker: CircuitBreaker | None = None,
 ) -> str:
     from synapse.reliability.retry import RetryPolicy, with_retry
+
+    gate = breaker if breaker is not None else get_chat_circuit()
+    gate.before_call()
 
     def _recover_tool_shaped(exc: BaseException) -> str | None:
         """Groq may reject JSON tool-shaped replies as tool_use_failed — recover the payload."""
@@ -159,7 +168,19 @@ async def _chat(
                 return recovered
             raise
 
-    return await with_retry(_once, policy=RetryPolicy(attempts=3, base_delay_s=0.3))
+    try:
+        text = await with_retry(_once, policy=RetryPolicy(attempts=3, base_delay_s=0.3))
+    except CircuitOpen:
+        raise
+    except asyncio.CancelledError:
+        gate.abandon()
+        raise
+    except Exception:
+        gate.record_failure()
+        raise
+    else:
+        gate.record_success()
+        return text
 
 
 async def _ckpt(ctx: GraphContext, phase: str, payload: dict[str, Any]) -> None:
@@ -168,7 +189,9 @@ async def _ckpt(ctx: GraphContext, phase: str, payload: dict[str, Any]) -> None:
     await ctx.stm.checkpoint(ctx.run_id, tenant_id=ctx.tenant_id, phase=phase, payload=payload)
 
 
-async def _exec(state: AgentState, ctx: GraphContext, name: str, args: dict[str, Any]) -> dict[str, Any]:
+async def _exec(
+    state: AgentState, ctx: GraphContext, name: str, args: dict[str, Any]
+) -> dict[str, Any]:
     fps = set(state.get("fingerprints") or [])
     trail = list(state.get("trail") or [])
     raw = list(state.get("raw_evidence") or [])
@@ -228,15 +251,28 @@ async def node_gather(state: AgentState, config: RunnableConfig) -> dict[str, An
     checklist = dict(state.get("checklist") or {})
     # Mutate via _exec into a working copy of state fields
     work: AgentState = dict(state)
-    await _exec(work, ctx, "project_lookup", {"project_key": key})
+    hop_log: list[dict[str, Any]] = list(work.get("hops") or [])
+
+    async def _live(tool: str, args: dict[str, Any], reason: str) -> dict[str, Any]:
+        result = await _exec(work, ctx, tool, args)
+        hop_log.append(
+            {
+                "tool": tool,
+                "args": args,
+                "reason": reason,
+                "source_ids": [],
+                "ok": "error" not in result and not result.get("unavailable"),
+            }
+        )
+        return result
+
+    await _live("project_lookup", {"project_key": key}, "live project baseline (status)")
     checklist["project_baseline"] = "filled"
-    await _exec(work, ctx, "risk_list", {"project_key": key})
+    await _live("risk_list", {"project_key": key}, "live open/mitigating risks")
     checklist["risk_records"] = "filled"
-    await _exec(work, ctx, "blocker_list", {"project_key": key})
+    await _live("blocker_list", {"project_key": key}, "live blockers")
     checklist["open_blockers"] = "filled"
-    await _exec(
-        work,
-        ctx,
+    await _live(
         "project_activity",
         {
             "project_key": key,
@@ -244,9 +280,10 @@ async def node_gather(state: AgentState, config: RunnableConfig) -> dict[str, An
             "until": "2026-07-01T00:00:00+00:00",
             "limit": 40,
         },
+        "live activity in the ask window",
     )
     checklist["activity_in_window"] = "filled"
-    await _exec(work, ctx, "task_search", {"project_key": key})
+    await _live("task_search", {"project_key": key}, "live tasks / slipped work")
     checklist["slipped_work"] = "partial"
     await _ckpt(
         ctx,
@@ -255,6 +292,7 @@ async def node_gather(state: AgentState, config: RunnableConfig) -> dict[str, An
             "checklist": checklist,
             "tool_trail": work.get("trail"),
             "tool_calls": ctx.tools.call_count,
+            "hops": hop_log,
         },
     )
     return {
@@ -262,11 +300,12 @@ async def node_gather(state: AgentState, config: RunnableConfig) -> dict[str, An
         "raw_evidence": work.get("raw_evidence"),
         "trail": work.get("trail"),
         "fingerprints": work.get("fingerprints"),
+        "hops": hop_log,
     }
 
 
 async def node_follow(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
-    """Code-owned multi-hop: live findings → docs/email/meetings/memory/github."""
+    """Code-owned multi-hop: live findings → docs/email/meetings/memory/web."""
     ctx = _ctx(config)
     key = state["project_key"]
     checklist = dict(state.get("checklist") or {})
@@ -301,12 +340,9 @@ async def node_follow(state: AgentState, config: RunnableConfig) -> dict[str, An
         if hop.tool == "memory_search" and result.get("memories"):
             checklist["prior_memory"] = "filled"
         if hop.tool in {
-            "github_search",
-            "slack_search",
-            "gmail_search",
             "hn_search",
             "stackoverflow_search",
-            "wikipedia_search",
+            "tavily_search",
         } and result.get("hits"):
             checklist["external_signals"] = "filled"
         if hop.tool in {"email_search", "meeting_search"} and (
@@ -344,8 +380,8 @@ async def node_probe(state: AgentState, config: RunnableConfig) -> dict[str, Any
                 "content": (
                     "Pick ONE next tool as JSON "
                     '{"tool":"document_search|email_search|meeting_search|memory_search|'
-                    "github_search|hn_search|stackoverflow_search|wikipedia_search|"
-                    "slack_search|gmail_search|task_search|risk_list|"
+                    "hn_search|stackoverflow_search|tavily_search|"
+                    "task_search|risk_list|"
                     'blocker_list|project_activity|project_lookup",'
                     '"args":{...}}. '
                     f"project_key={key}. Missing slots: {missing}"
@@ -396,12 +432,9 @@ async def node_probe(state: AgentState, config: RunnableConfig) -> dict[str, Any
             "document_search",
             "email_search",
             "meeting_search",
-            "github_search",
             "hn_search",
             "stackoverflow_search",
-            "wikipedia_search",
-            "slack_search",
-            "gmail_search",
+            "tavily_search",
             "memory_search",
         }:
             args.setdefault("query", state["question"])
@@ -409,12 +442,9 @@ async def node_probe(state: AgentState, config: RunnableConfig) -> dict[str, Any
         if name == "document_search" and result.get("hits"):
             checklist["supporting_documents"] = "filled"
         if name in {
-            "github_search",
             "hn_search",
             "stackoverflow_search",
-            "wikipedia_search",
-            "slack_search",
-            "gmail_search",
+            "tavily_search",
         } and result.get("hits"):
             checklist["external_signals"] = "filled"
         if name == "memory_search" and result.get("memories"):
@@ -477,19 +507,18 @@ async def node_finish(state: AgentState, config: RunnableConfig) -> dict[str, An
         )
         checklist["prior_memory"] = "partial"
     if checklist.get("external_signals") == "empty":
-        # Diverse public live externals (no personal tokens required).
+        # Public web for the Atlas vendor-SDK freeze. Missing Tavily key is a gap.
         await _exec(
-            work, ctx, "github_search", {"query": "risk OR blocker OR SDK OR freeze", "limit": 3}
+            work, ctx, "hn_search", {"query": "vendor SDK production outage", "limit": 3}
         )
-        await _exec(work, ctx, "hn_search", {"query": "production outage OR vendor delay", "limit": 3})
         await _exec(
             work,
             ctx,
             "stackoverflow_search",
-            {"query": "deployment failure OR SDK integration", "limit": 3},
+            {"query": "SDK deployment failure", "limit": 3},
         )
         await _exec(
-            work, ctx, "wikipedia_search", {"query": "software release management", "limit": 2}
+            work, ctx, "tavily_search", {"query": "vendor SDK cutover delay", "limit": 3}
         )
         checklist["external_signals"] = "partial"
     await _ckpt(
@@ -595,7 +624,8 @@ async def node_synthesise(state: AgentState, config: RunnableConfig) -> dict[str
                     "Precedence: live > external APIs > RAG > LTM. "
                     "Never let LTM override live project status. "
                     "Cite only ids in the pack. "
-                    'Return JSON {"answer":"...","citations":[{"source":"...","id":"..."}],"gaps":["..."]}'
+                    "Return JSON "
+                    '{"answer":"...","citations":[{"source":"...","id":"..."}],"gaps":["..."]}'
                 ),
             },
             {

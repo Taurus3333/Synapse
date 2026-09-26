@@ -11,6 +11,7 @@ from synapse.agent.graph import build_agent_graph
 from synapse.agent.integrate import explain_atlas_hops, run_multihop_integration
 from synapse.agent.multihop import plan_follow_hops
 from synapse.auth.principal import Principal
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
 from synapse.data.generate import generate
 from synapse.evidence.types import SourceKind
 from synapse.memory.ltm import LongTermMemory
@@ -67,10 +68,9 @@ def test_plan_follow_hops_from_live_risks() -> None:
     assert "email_search" in tools
     assert "meeting_search" in tools
     assert "memory_search" in tools
-    assert "github_search" in tools
     assert "hn_search" in tools
     assert "stackoverflow_search" in tools
-    assert "wikipedia_search" in tools
+    assert "tavily_search" in tools
     assert any("rsk_sdk" in h.source_ids for h in hops)
     assert any("live risks" in h.reason or "cross-source" in h.reason for h in hops)
     # Query must carry signal tokens from titles (not the raw question alone)
@@ -116,12 +116,8 @@ async def atlas_tools(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SYNAPSE_JWT_SECRET", "integration-test-synapse-jwt-secret!!")
     monkeypatch.setenv("SYNAPSE_ENV", "test")
     for key in (
-        "SYNAPSE_GITHUB_TOKEN",
-        "GITHUB_TOKEN",
-        "SYNAPSE_SLACK_BOT_TOKEN",
-        "SLACK_BOT_TOKEN",
-        "SYNAPSE_GMAIL_ACCESS_TOKEN",
-        "GMAIL_ACCESS_TOKEN",
+        "SYNAPSE_TAVILY_API_KEY",
+        "TAVILY_API_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
     clear_settings_cache()
@@ -165,7 +161,7 @@ async def test_atlas_multihop_gather_follow_pack(atlas_tools: ToolSession) -> No
     result = await run_multihop_integration(
         atlas_tools,
         project_key="ATLAS",
-        question="Summarize what changed in Project Atlas during Q2 and identify the major risks.",
+        question=ATLAS_CUTOVER_ASK,
     )
     hop_tools = [h["tool"] for h in result.hops]
     assert "email_search" in hop_tools
@@ -183,18 +179,15 @@ async def test_atlas_multihop_gather_follow_pack(atlas_tools: ToolSession) -> No
     assert result.sources_present["live"] is True
     assert result.sources_present["email_or_meeting"] is True
     assert result.sources_present["ltm"] is True
-    # Public live externals (k8s / HN / SO) — soft-skip only if every hop failed network
+    # Public web (HN / SO). Tavily is a gap here because the fixture clears its key.
     ext_hops = [
         h
         for h in result.hops
         if h["tool"]
         in {
-            "github_search",
             "hn_search",
             "stackoverflow_search",
-            "wikipedia_search",
-            "slack_search",
-            "gmail_search",
+            "tavily_search",
         }
     ]
     if any(h.get("ok") for h in ext_hops):
@@ -206,7 +199,9 @@ async def test_atlas_multihop_gather_follow_pack(atlas_tools: ToolSession) -> No
     meeting_items = [i for i in result.pack.items if i.source == "meeting_search"]
     assert email_items, "ATLAS Harbor SDK email must surface via follow hop"
     assert meeting_items, "ATLAS Q2 retro meeting must surface via follow hop"
-    assert any("SDK" in (i.summary or "") or "vendor" in (i.summary or "").lower() for i in email_items)
+    assert any(
+        "SDK" in (i.summary or "") or "vendor" in (i.summary or "").lower() for i in email_items
+    )
 
     trail_names = [t["tool"] for t in result.tool_trail]
     # gather precedes follow tools

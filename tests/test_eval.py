@@ -127,12 +127,8 @@ async def eval_tools(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SYNAPSE_JWT_SECRET", "integration-test-synapse-jwt-secret!!")
     monkeypatch.setenv("SYNAPSE_ENV", "test")
     for key in (
-        "SYNAPSE_GITHUB_TOKEN",
-        "GITHUB_TOKEN",
-        "SYNAPSE_SLACK_BOT_TOKEN",
-        "SLACK_BOT_TOKEN",
-        "SYNAPSE_GMAIL_ACCESS_TOKEN",
-        "GMAIL_ACCESS_TOKEN",
+        "SYNAPSE_TAVILY_API_KEY",
+        "TAVILY_API_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
     clear_settings_cache()

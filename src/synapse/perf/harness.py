@@ -11,12 +11,11 @@ from typing import Any
 
 import httpx
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
 from synapse.perf.cost import estimate_run_usd, pricing_notes
 from synapse.perf.usage import summarize_latencies
 
-DEFAULT_ASK = (
-    "Summarize what changed in ATLAS during Q2 and identify the major risks."
-)
+DEFAULT_ASK = ATLAS_CUTOVER_ASK
 DEFAULT_MULTIHOP = DEFAULT_ASK
 DEFAULT_EMAIL = "uma.berg.0@northwind.example"
 DEFAULT_PASSWORD = "synapse-demo"

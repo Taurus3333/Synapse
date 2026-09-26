@@ -60,11 +60,11 @@ async def test_with_retry_does_not_retry_client_errors() -> None:
 @pytest.mark.asyncio
 async def test_dlq_list_and_ack(monkeypatch: pytest.MonkeyPatch) -> None:
     from synapse.data.generate import generate
+    from synapse.memory.stm import ShortTermMemory
     from synapse.platform.config import clear_settings_cache, get_settings
     from synapse.platform.db import Database
     from synapse.platform.seed import create_schema, load_dataset, session_factory
     from synapse.reliability.dlq import DeadLetterLite
-    from synapse.memory.stm import ShortTermMemory
 
     monkeypatch.setenv("SYNAPSE_JWT_SECRET", "integration-test-synapse-jwt-secret!!")
     monkeypatch.setenv("SYNAPSE_ENV", "test")
@@ -75,7 +75,9 @@ async def test_dlq_list_and_ack(monkeypatch: pytest.MonkeyPatch) -> None:
     await create_schema(db.engine)
     sessions = session_factory(db.engine)
     async with sessions() as session:
-        await load_dataset(session, generate(seed=42, profile="ci"), password=settings.demo_password)
+        await load_dataset(
+            session, generate(seed=42, profile="ci"), password=settings.demo_password
+        )
 
     stm = ShortTermMemory(sessions)
     run_id = await stm.start_run(

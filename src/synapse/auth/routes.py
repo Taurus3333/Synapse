@@ -33,7 +33,9 @@ class TokenResponse(BaseModel):
 async def token(body: TokenRequest, request: Request) -> TokenResponse:
     settings = request.app.state.settings
     async with request.app.state.sessions() as session:
-        result = await session.execute(select(UserRow).where(UserRow.email == str(body.email).lower()))
+        result = await session.execute(
+            select(UserRow).where(UserRow.email == str(body.email).lower())
+        )
         user = result.scalar_one_or_none()
         if user is None or not user.is_active:
             raise HTTPException(401, "invalid credentials")

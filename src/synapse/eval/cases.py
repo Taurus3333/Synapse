@@ -11,6 +11,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
+
 
 class GoldenCase(BaseModel):
     """One regression question with closed-world expectations."""
@@ -37,9 +39,7 @@ def atlas_q2_case() -> GoldenCase:
     """Canonical portfolio question — ATLAS seed-42."""
     return GoldenCase(
         id="atlas_q2_risks",
-        question=(
-            "Summarize what changed in Project Atlas during Q2 and identify the major risks."
-        ),
+        question=ATLAS_CUTOVER_ASK,
         project_key="ATLAS",
         expect_live_status="at_risk",
         require_pack_ids=[
@@ -71,7 +71,10 @@ def harbor_status_case() -> GoldenCase:
     """Second project — delayed live status + open blocker."""
     return GoldenCase(
         id="harbor_delayed",
-        question="What is Harbor's delivery status and what is blocking it?",
+        question=(
+            "Harbor Identity owns the SDK the Atlas freeze is waiting on. "
+            "What is Harbor's delivery status and what is blocking the SDK?"
+        ),
         project_key="HARBOR",
         expect_live_status="delayed",
         require_pack_ids=["prj_nw_00002", "blk_nw_00003"],
@@ -81,7 +84,7 @@ def harbor_status_case() -> GoldenCase:
         require_answer_substrings=["delayed"],
         forbid_answer_substrings=["on track", "no blockers"],
         max_rejected_citations=0,
-        notes="HARBOR seed-42 is delayed with open cache-invalidation blocker.",
+        notes="HARBOR seed-42 is delayed. Open blocker: Harbor SDK 2.4 missed the May drop.",
     )
 
 

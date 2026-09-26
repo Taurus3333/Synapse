@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     jwt_ttl_minutes: int = 60
     demo_password: str = "synapse-demo"
 
+    # One API process. Inflight asks share the DB pool; pool must cover them plus health.
+    ask_max_inflight: int = 4
+    ask_max_inflight_per_tenant: int = 2
+    ask_deadline_s: float = 120.0
+    chat_timeout_s: float = 25.0
+    embed_timeout_s: float = 20.0
+    db_pool_size: int = 5
+    db_max_overflow: int = 3
+    db_pool_timeout_s: float = 10.0
+    llm_circuit_failures: int = 5
+    llm_circuit_reset_s: float = 30.0
+
     @field_validator("log_level")
     @classmethod
     def _normalise_log_level(cls, value: str) -> str:
@@ -62,6 +74,23 @@ class Settings(BaseSettings):
             raise ValueError("redis_url must not be blank")
         if len(self.jwt_secret.get_secret_value()) < 32:
             raise ValueError("jwt_secret must be at least 32 characters")
+        if self.ask_max_inflight < 1:
+            raise ValueError("ask_max_inflight must be >= 1")
+        if not 1 <= self.ask_max_inflight_per_tenant <= self.ask_max_inflight:
+            raise ValueError("ask_max_inflight_per_tenant must be between 1 and ask_max_inflight")
+        if self.ask_deadline_s <= self.chat_timeout_s:
+            raise ValueError("ask_deadline_s must be greater than chat_timeout_s")
+        if self.chat_timeout_s <= 0 or self.embed_timeout_s <= 0:
+            raise ValueError("chat_timeout_s and embed_timeout_s must be > 0")
+        if self.db_pool_size < 1 or self.db_max_overflow < 0 or self.db_pool_timeout_s <= 0:
+            raise ValueError("database pool settings must be positive")
+        # Each in-flight ask can hold one connection; health/auth needs one more.
+        if self.db_pool_size + self.db_max_overflow < self.ask_max_inflight + 1:
+            raise ValueError(
+                "db pool (size + overflow) must be at least ask_max_inflight + 1"
+            )
+        if self.llm_circuit_failures < 1 or self.llm_circuit_reset_s <= 0:
+            raise ValueError("llm circuit settings must be positive")
         return self
 
     @model_validator(mode="after")

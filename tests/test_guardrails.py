@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
 from synapse.guardrails.input_policy import check_user_question
 from synapse.guardrails.structured import (
     parse_plan,
@@ -30,9 +31,7 @@ def test_blocks_cross_tenant_probe() -> None:
 
 
 def test_allows_normal_atlas_question() -> None:
-    v = check_user_question(
-        "Summarize what changed in ATLAS during Q2 and identify the major risks."
-    )
+    v = check_user_question(ATLAS_CUTOVER_ASK)
     assert v.allowed is True
     assert v.reason == "ok"
 

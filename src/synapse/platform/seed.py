@@ -73,6 +73,20 @@ async def create_schema(engine: AsyncEngine) -> None:
                 "ADD COLUMN IF NOT EXISTS contradicts_live_status BOOLEAN DEFAULT FALSE"
             )
         )
+        # create_all does not add columns to an existing agent_runs table.
+        await conn.execute(
+            text("ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(128)")
+        )
+        await conn.execute(
+            text("ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS response_body JSONB")
+        )
+        await conn.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_agent_runs_idempotency "
+                "ON agent_runs (tenant_id, user_id, idempotency_key) "
+                "WHERE idempotency_key IS NOT NULL"
+            )
+        )
 
 
 async def drop_schema(engine: AsyncEngine) -> None:

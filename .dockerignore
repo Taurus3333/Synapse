@@ -1,4 +1,4 @@
-# .dockerignore for Synapse API image
+# Keep the API image to the package it installs.
 .venv/
 venv/
 .git/
@@ -12,11 +12,9 @@ __pycache__/
 .env.*
 !.env.example
 docs/
-infra/
 tests/
 scripts/
 data/
 *.md
 !README.md
 .cursor/
-agent-transcripts/

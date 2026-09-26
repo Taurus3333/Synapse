@@ -1,4 +1,4 @@
-# Synapse API — production image (ECS/Fargate).
+# Synapse API image. Run it beside Docker Compose Postgres and Redis.
 FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -25,5 +25,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
-# Bind 0.0.0.0 inside the container; secrets/URLs come from the task env / Secrets Manager.
+# Bind 0.0.0.0 inside the container. Database URL, Redis URL, and API keys come from the environment.
 CMD ["synapse-api"]

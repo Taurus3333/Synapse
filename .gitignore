@@ -15,19 +15,11 @@ htmlcov/
 .idea/
 .vscode/
 data/generated/
+eval_report.json
+redteam_report.json
 
-# Personal notes — keep out of the public repo
-RESUME.md
-PROBES.md
-
-# Terraform
-**/.terraform/
+.terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
-!*.tfvars.example
-crash.log
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
+!terraform.tfvars.example

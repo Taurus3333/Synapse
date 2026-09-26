@@ -61,23 +61,16 @@ async def test_ltm_write_search_supersede_and_tenant(ltm: LongTermMemory) -> Non
 @pytest.mark.asyncio
 async def test_connectors_public_without_personal_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     for key in (
-        "SYNAPSE_GITHUB_TOKEN",
-        "GITHUB_TOKEN",
-        "SYNAPSE_SLACK_BOT_TOKEN",
-        "SLACK_BOT_TOKEN",
-        "SYNAPSE_GMAIL_ACCESS_TOKEN",
-        "GMAIL_ACCESS_TOKEN",
+        "SYNAPSE_TAVILY_API_KEY",
+        "TAVILY_API_KEY",
     ):
         monkeypatch.delenv(key, raising=False)
     status = connectors.connector_status()
     assert status["live_db"]["ready"] is True
-    assert status["public_external"]["github"]["ready"] is True
-    assert status["public_external"]["wikipedia"]["ready"] is True
-    assert status["optional_private"]["slack"]["provider"] == "hackernews"
-    assert status["optional_private"]["gmail"]["provider"] == "stackoverflow"
-    assert status["github"]["authenticated"] is False
-    assert status["slack"]["authenticated"] is False
-    assert status["gmail"]["authenticated"] is False
+    assert status["public_external"]["hackernews"]["ready"] is True
+    assert status["public_external"]["stackoverflow"]["ready"] is True
+    assert status["public_external"]["tavily"]["ready"] is False
+    assert status["tavily"]["authenticated"] is False
 
 
 def test_assemble_external_and_ltm_precedence() -> None:
@@ -95,11 +88,11 @@ def test_assemble_external_and_ltm_precedence() -> None:
                 },
             },
             {
-                "tool": "github_search",
+                "tool": "tavily_search",
                 "result": {
                     "hits": [
                         {
-                            "id": "gh_1",
+                            "id": "tvy_1",
                             "text": "SDK delay issue",
                             "framed": "<<<DATA>>>",
                         }
@@ -119,7 +112,7 @@ def test_assemble_external_and_ltm_precedence() -> None:
     kinds = {i.record_id: i for i in pack.items}
     assert kinds["prj_1"].source_kind == SourceKind.LIVE
     assert kinds["prj_1"].precedence == 0
-    assert kinds["gh_1"].source_kind == SourceKind.EXTERNAL
-    assert kinds["gh_1"].precedence == 5
+    assert kinds["tvy_1"].source_kind == SourceKind.EXTERNAL
+    assert kinds["tvy_1"].precedence == 5
     assert kinds["mem_1"].source_kind == SourceKind.LTM
     assert kinds["mem_1"].precedence == 20

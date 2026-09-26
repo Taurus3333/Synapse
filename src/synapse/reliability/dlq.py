@@ -1,6 +1,6 @@
 """Dead-letter lite for sync asks — failed STM runs are inspectable poison.
 
-True SQS/DLQ comes with async workers (AWS chunk). Until then, failed
+True SQS/DLQ comes with async workers. Until then, failed
 `agent_runs` *are* the dead letter: list, inspect checkpoints, acknowledge.
 """
 

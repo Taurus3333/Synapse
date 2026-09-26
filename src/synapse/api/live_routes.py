@@ -88,7 +88,12 @@ async def patch_project_status(
         )
     if row is None:
         raise HTTPException(404, "project not found")
-    return {"id": row.id, "key": row.key, "status": row.status, "updated_at": row.updated_at.isoformat()}
+    return {
+        "id": row.id,
+        "key": row.key,
+        "status": row.status,
+        "updated_at": row.updated_at.isoformat(),
+    }
 
 
 @router.get("/projects/{key}/tasks")

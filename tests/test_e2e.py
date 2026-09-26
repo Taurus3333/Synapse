@@ -10,11 +10,47 @@ from __future__ import annotations
 import pytest
 from starlette.testclient import TestClient
 
+from synapse.data.catalog import ATLAS_CUTOVER_ASK
 from tests.conftest import auth_token
 
 NW = "uma.berg.0@northwind.example"
 GX = "quinn.novak.0@globex.example"
-Q2 = "Summarize what changed in ATLAS during Q2 and identify the major risks."
+Q2 = ATLAS_CUTOVER_ASK
+
+
+class _PlanMessage:
+    content = '{"slots":["live_status","risks","blockers"]}'
+
+
+class _PlanChoice:
+    message = _PlanMessage()
+
+
+class _PlanUsage:
+    prompt_tokens = 1
+    completion_tokens = 1
+
+
+class _PlanResponse:
+    choices = [_PlanChoice()]
+    usage = _PlanUsage()
+
+
+class _PlanCompletions:
+    async def create(self, **kwargs: object) -> _PlanResponse:
+        return _PlanResponse()
+
+
+class _PlanChat:
+    completions = _PlanCompletions()
+
+
+class _PlanClient:
+    chat = _PlanChat()
+
+
+def _fake_chat_client(timeout_s: float) -> tuple[_PlanClient, str]:
+    return _PlanClient(), "fake-model"
 
 
 @pytest.mark.e2e
@@ -174,6 +210,7 @@ def test_e2e_failure_dlq_and_run_audit(seeded_client: TestClient) -> None:
 def test_e2e_failure_tool_budget_exceeded() -> None:
     """Agent tool ceiling is enforced in-process (not only documented)."""
     import asyncio
+    from unittest.mock import patch
 
     from synapse.agent.graph import AgentBudgets
     from synapse.agent.runner import run_agent
@@ -209,8 +246,12 @@ def test_e2e_failure_tool_budget_exceeded() -> None:
                 sessions=sessions,
                 max_calls=2,
             )
-            # Gather alone exceeds 2 calls → RuntimeError budget.
-            with pytest.raises(RuntimeError, match="budget|tool"):
+            # Gather alone exceeds 2 calls. Plan needs a chat client; stub it so
+            # the assertion is the tool budget, not a missing API key.
+            with (
+                patch("synapse.agent.runner._client", _fake_chat_client),
+                pytest.raises(RuntimeError, match="budget|tool"),
+            ):
                 await run_agent(
                     Q2,
                     tools,

@@ -18,7 +18,7 @@ TENANTS: tuple[TenantSpec, ...] = (
         code="nw",
         name="Northwind Logistics",
         flagship_key="ATLAS",
-        flagship_name="Atlas Platform Modernisation",
+        flagship_name="Atlas Platform Cutover",
         extra_keys=("HARBOR", "QUAY", "BEACON"),
         extra_names=("Harbor Identity", "Quay Billing", "Beacon Observability"),
     ),
@@ -102,6 +102,13 @@ LAST_NAMES = (
     "Young",
     "Zimmerman",
     "Adler",
+)
+
+# The product question. Measured runs in docs/*.json used a shorter wording of this same cutover.
+ATLAS_CUTOVER_ASK = (
+    "Can the Atlas platform cutover still make the 30 June code freeze? "
+    "What changed in Q2, what is the vendor SDK blocker, "
+    "and does the status report agree with live status?"
 )
 
 TEAM_NAMES = (

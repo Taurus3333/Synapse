@@ -1,8 +1,8 @@
 """Deterministic multi-hop follow-ups from live evidence.
 
 After gather, code inspects risks/blockers/tasks and queues the next
-retrieval hops (docs, memory, email, meetings, github). The LLM does not
-invent these first hops — that is the Chunk 11 integration contract.
+retrieval hops (docs, memory, email, meetings, Hacker News, Stack Overflow, Tavily).
+The LLM does not invent these first hops — that is the Chunk 11 integration contract.
 """
 
 from __future__ import annotations
@@ -158,24 +158,19 @@ def plan_follow_hops(
             "recall prior LTM notes for same signals",
         )
         add(
-            "github_search",
-            {"query": query, "limit": 3},
-            "live public GitHub hop (default kubernetes/kubernetes)",
-        )
-        add(
             "hn_search",
             {"query": query, "limit": 3},
-            "live public Hacker News hop",
+            "live Hacker News hop for public discussion of the vendor SDK risk",
         )
         add(
             "stackoverflow_search",
             {"query": query, "limit": 3},
-            "live public Stack Overflow hop",
+            "live Stack Overflow hop for SDK integration failures",
         )
         add(
-            "wikipedia_search",
+            "tavily_search",
             {"query": query, "limit": 3},
-            "live public Wikipedia hop",
+            "live Tavily web hop for vendor SDK cutover pages",
         )
     else:
         add(
